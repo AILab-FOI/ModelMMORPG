@@ -9,6 +9,9 @@ Our research is therefore aimed towards enriching the organizational design meth
 ## Main Goals:
 
 To identify and formalize adequate organizational design methods for developing LSMAS in MMORPGs.
+
 To couple them with real-life and future scenarios from industry.
+
 To provide open and accessible tools, which will allow for design, development, implementation, control, simulation and maintenance of LSMAS in MMORPGs.
+
 The quest for the dragon egg is a quest specially designed for the Mana World MMORPG that shall allow us to study the organizational behaviour of players on-line.
