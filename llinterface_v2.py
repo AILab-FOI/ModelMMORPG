@@ -717,10 +717,10 @@ class Connection:
 		self.srv.sendall( "\xb9%s" % ( struct.pack( "<L", NPC ) ) )
 
 
-SERVER = 'dragon.foi.hr' #'localhost' 
+SERVER = '' 
 PORT = 6901
-USERNAME = 'markus' #'igor' #'joza' # 
-PASSWORD = 'lozinka321' #'hrtwrk000' #
+USERNAME = ''
+PASSWORD = ''
 CHARACTER = 0 # index of character to play with (0 first, 1 second ...)
 
 if __name__ == '__main__':
