@@ -56,8 +56,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 SERVER = 'dragon.foi.hr' 
 PORT = 6901
-USERNAME = 'markus'
-PASSWORD = 'lozinka321'
+USERNAME = ''
+PASSWORD = ''
 CHARACTER = 0
 
 if __name__ == '__main__':
