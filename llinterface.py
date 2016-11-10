@@ -6,6 +6,9 @@ import struct
 import time
 import threading
 import sys
+import re
+import select
+import os
 
 '''Dictionary holds HEX codes of packets as keys with packet length 
 and packet name as values in a tuple.'''
@@ -285,6 +288,8 @@ class PacketBuffer( threading.Thread ):
 			if buff:
 				packet = Packet( buff )
 				self.packets.append( packet )
+				#print "\n\n"
+				#print self.packets
 			if self.kill:
 				return
 			
@@ -308,11 +313,14 @@ class PacketBuffer( threading.Thread ):
 					if data[ 0 ] != '\x81' and data[ 1 ] != '\x00': 
 						'''The code is in the first two bytes''' 
 						code = struct.unpack( "<H", data[ 0:2 ] )[ 0 ]						
+						#print "\n\n"	#DEBUG
+						#print code		#DEBUG
 						
 					else:
 						'''But sometimes also in only the first byte'''
 						code = ord( data[ 0 ] )
-						
+						#print "\n\n"	#DEBUG
+						#print code		#DEBUG
 					
 					length = PACKETS[ code ][ 0 ]
 					
@@ -366,9 +374,37 @@ class PacketBuffer( threading.Thread ):
 		ret.seen = True
 		return ret
 		
+		
+		
 class Packet:
+	
 	'''Class to hold data about a given packet'''
+
+	droppedItemObjectID = None
+	droppedItemID = None
+	droppedItem_x = None
+	droppedItem_y = None
+	droppedItemAmount = None
+	droppedItemDict = {}
+	
+	chatCoordinates = None
+	chatCoordinates_x = None
+	chatCoordinates_y = None
+	
+	playerMovesTo_ID = None
+	playerMovesTo_x = None
+	playerMovesTo_y = None
+	
+	critterMovesTo_ID = None
+	critterMovesTo_x = None
+	critterMovesTo_y = None
+	
+	
+	
 	def __init__( self, data=None ):
+		
+		self.droppedItemDict = {}
+		
 		self.data = data
 		if self.data:
 			try:
@@ -394,9 +430,13 @@ class Packet:
 			ret += '%d %s\n' % ( i, hex( ord( j ) ) )
 		return ret
 
+
+
 	def interpret( self ):
+		
 		'''Parse the packet and assign adequate attributes to the object depending 
 		on the packet type'''
+		
 		if self.type == 'SMSG_LOGIN_DATA':
 			
 			'''
@@ -519,9 +559,9 @@ class Packet:
 			#raise UpdateError, 'Server requests client update!\nComment out update_host: (...) in ./tmwa-server-data/login/conf/local_login.conf'
 			pass
 		
-		elif self.type == 'SMSG_NPC_MESSAGE':
-			self.message = self.data[ 8:-1 ]
-			self.NPCid =  struct.unpack( "<L", self.data[ 4:8 ] )[ 0 ]
+		#elif self.type == 'SMSG_NPC_MESSAGE':
+			#self.message = self.data[ 8:-1 ]
+			#self.NPCid =  struct.unpack( "<L", self.data[ 4:8 ] )[ 0 ]
 		
 		elif self.type == 'SMSG_NPC_CHOICE':
 			self.message = self.data[ 8:-1 ]
@@ -532,18 +572,186 @@ class Packet:
 			self.map = self.data.split( '\0' )[ 1 ]
 			self.x = struct.unpack( "<B", self.data[ 18 ] )[ 0 ]
 			self.y = struct.unpack( "<B", self.data[ 20 ] )[ 0 ]
+		
+		elif self.type == 'SMSG_ITEM_DROPPED':
+			
+			Packet.droppedItemObjectID = struct.unpack ("<L", self.data[2:6])[0]
+			#print "\ndroppedItemObjectID: %d" %Packet.droppedItemObjectID
+			
+			Packet.droppedItemID = struct.unpack ("<H", self.data[6:8])[0]
+			#print "\ndroppedItemID: %d"  %Packet.droppedItemID
+			
+			Packet.droppedItem_x = struct.unpack ("<H", self.data[9:11])[0]
+			#print "\nx: %d" %Packet.droppedItem_x
+			
+			Packet.droppedItem_y = struct.unpack ("<H", self.data[11:13])[0]
+			#print "\ny: %d" % Packet.droppedItem_y
+			
+			Packet.droppedItemAmount = struct.unpack ("<H", self.data[15:17])[0]
+			#print "\nAmount: %d" %Packet.droppedItemAmount
+			
+			Packet.droppedItemDict[Packet.droppedItemObjectID]=[Packet.droppedItemID, Packet.droppedItem_x, Packet.droppedItem_y, Packet.droppedItemAmount]
+			print "\n"
+			print Packet.droppedItemDict
+	
+		
+		#elif self.type == 'SMSG_PLAYER_INVENTORY_ADD': # NE REGISTRIRA POJAVU OVOG PAKETA
+			
+			#print "\n -- added stuff to inventory!"
+			#droppedItemID = struct.unpack ("<L", self.data[-4:])
+			#print droppedItemID
+		
+
+		elif self.type == 'SMSG_ITEM_REMOVE':
+			print "\n -- added stuff to inventory and removed from map!"
+			droppedItemID = struct.unpack ("<L", self.data[-4:])[0]
+			print "Removed item ID: %d" %droppedItemID
+			del Packet.droppedItemDict[droppedItemID]
+			print "\nUpdated list of items on the map:"
+			print Packet.droppedItemDict
+			
+
+			
+		elif self.type == 'SMSG_PLAYER_CHAT':
+			
+			if re.match (".*[a-z]+\:\ [0-9]+\-[0-9]\ \([0-9]+\,[0-9]+", self.data) is not None:
+				print "\n\nIncoming coordinates found!"
+				Packet.chatCoordinates = self.data
+				Packet.chatCoordinates = list(Packet.chatCoordinates) 
+				#print Packet.chatCoordinates
+				pos = Packet.chatCoordinates.index("(")
+				del Packet.chatCoordinates[:pos+1]
+				#print "\n\n"
+				#print Packet.chatCoordinates
+				pos = Packet.chatCoordinates.index(")")
+				del Packet.chatCoordinates[pos:]
+				#print "\n\n"
+				#print Packet.chatCoordinates
+				pos = Packet.chatCoordinates.index(",")
+				Packet.chatCoordinates_x = "".join(Packet.chatCoordinates[:pos])
+				print "\n\n"  
+				print "Coordinates X: %s" %Packet.chatCoordinates_x
+				Packet.chatCoordinates_y = "".join(Packet.chatCoordinates[pos+1:])
+				print "Coordinates Y: %s" %Packet.chatCoordinates_y
+			
+			#else:
+				#print "\n\nnon-coordinates chat inbound: %s" %self.data
+				
+		elif self.type == 'SMSG_TRADE_REQUEST':		
+			print "\n\nTrade request inbound! Use main menu to answer."
+			
+		
+		elif self.type == 'SMSG_BEING_MOVE':
+			
+			self.CritterID =  struct.unpack( "<L", self.data[ 2:6 ] )[0] #WORKS; gets being ID
+			print self.CritterID
+			
+			# coordinates work, but values represent FINAL destination of the monster, not step-by-step.
+			x_1 = struct.unpack ("<B", self.data[52])[0]
+			x_2 = struct.unpack ("<B", self.data[53])[0]
+			x_1 = bin(x_1).replace("0b", "").rjust(8,"0")
+			x_2 = bin(x_2).replace("0b", "").rjust(8,"0")
+			x = x_1[6:] + x_2[:6]
+			x = int(x, 2)
+			
+			#print int(x, 2)
+			
+			y_1 = struct.unpack ("<B", self.data[53])[0]
+			y_2 = struct.unpack ("<B", self.data[54])[0]
+			y_1 = bin(y_1).replace("0b", "").rjust(8,"0")
+			y_2 = bin(y_2).replace("0b", "").rjust(8,"0")
+			y = y_1[6:] + y_2
+			y = int(y, 2)
+			
+			#print int(y, 2)
+			
+			Packet.critterMovesTo_ID = self.CritterID
+			Packet.critterMovesTo_x = x
+			Packet.critterMovesTo_y = y
+		
+		
+		elif self.type == 'SMSG_PLAYER_MOVE':
+			
+			# WORKS
+			
+			self.PlayerID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
+			print "Player %s moved" %self.PlayerID
+			
+			x_1 = struct.unpack ("<B", self.data[52])[0]
+			x_2 = struct.unpack ("<B", self.data[53])[0]
+			x_1 = bin(x_1).replace("0b", "").rjust(8,"0")
+			x_2 = bin(x_2).replace("0b", "").rjust(8,"0")
+			x = x_1[6:] + x_2[:6]
+			x = int(x, 2)
+			
+			
+			y_1 = struct.unpack ("<B", self.data[53])[0]
+			y_2 = struct.unpack ("<B", self.data[54])[0]
+			y_1 = bin(y_1).replace("0b", "").rjust(8,"0")
+			y_2 = bin(y_2).replace("0b", "").rjust(8,"0")
+			y = y_1[6:] + y_2
+			y = int(y, 2)
+			
+			
+			Packet.playerMovesTo_ID = self.PlayerID
+			#print Packet.playerMovesTo_ID
+			Packet.playerMovesTo_x = x
+			Packet.playerMovesTo_y = y
+		
+			
+		elif self.type == 'SMSG_PLAYER_INVENTORY':
+			print "\n\n\nINVENTORY DETECTED! \n\n\n"
+			
+			
+		elif self.type == 'SMSG_WALK_RESPONSE': # CLIENT JOZEK CAN'T DETECT PACKAGE WHEN IGOR MOVES
+			
+			x_1 = struct.unpack ("<B", self.data[8])[0]
+			x_2 = struct.unpack ("<B", self.data[9])[0]
+			x_1 = bin(x_1).replace("0b", "").rjust(8,"0")
+			x_2 = bin(x_2).replace("0b", "").rjust(8,"0")
+			x = x_1[6:] + x_2[:6]
+			x = int(x, 2)
+			
+			y_1 = struct.unpack ("<B", self.data[9])[0]
+			y_2 = struct.unpack ("<B", self.data[10])[0]
+			y_1 = bin(y_1).replace("0b", "").rjust(8,"0")
+			y_2 = bin(y_2).replace("0b", "").rjust(8,"0")
+			y = y_1[6:] + y_2
+			y = int(y, 2)
+
+			print "Someone moved to %d, %d" %(x,y)
+			
+			
+		elif self.type == 'SMSG_NPC_MESSAGE': # WORKS, BUT jozek needs to send message to npc in order for client to detect message
+			
+			npcID = struct.unpack( "<L", self.data[ 4:8 ] )[0]
+			print "Getting message from NPC with ID:"
+			print npcID
+					
 					
 	def _parse_ip( self, string ):
 		'''Parse an IP address'''
 		return ".".join( map( str, map( ord, string ) ) )
 
 
+
+
+
+
+
 class UpdateError( ValueError ):
 	pass
 
+
+
+
+
+
 class Connection:
+	
 	'''Class to hold a connection to the three TWM servers (login, character, map) and
 	provide a low level interface to control a character'''
+	
 	def __init__( self, server, port, username, password, character=0 ):
 		'''Initialization, paramers are self-explanatory except for character which is 
 		the selected index of the account character to play with (first is zero, second is 1 etc.)'''
@@ -556,6 +764,7 @@ class Connection:
 		self.character = character
 		self.sex = None
 		self.pb = None # packet buffer
+		
 
 	def login( self ):
 		'''Login to login server, then select character from character server and 
@@ -677,6 +886,10 @@ class Connection:
 		'''Set destination (walk to given x, y coordinates with orientation direction like in setDirection)'''
 		''' use \where in chat to get coordinates # OR PRESS F10) '''
 		
+		print "SET DESTINATION"
+		print "X: %d" %x
+		print "Y: %d" %y
+		
 		data = bin(x)[-10:].replace( 'b', '0' ).rjust(10).replace( ' ', '0' ) + bin(y)[-10:].replace( 'b', '0' ).rjust(10).replace( ' ', '0' ) + bin(direction)[-4:].replace( 'b', '0' ).rjust(4).replace( ' ', '0' )
 		
 		data = data[ :8 ], data[ 8:16 ], data[ 16: ]
@@ -703,8 +916,11 @@ class Connection:
 		'''Pick up a given item by ID (not functional yet)'''
 		self.srv.sendall( "\x9f\0%s" % ( struct.pack( "<L", itemid ) ) )
 		
-	def itemPickUp (self):
-		self.srv.sendall( "\x9f\x00\x02\x00\x00\x00" )
+	def itemPickUp (self, itemIndex): # WORKS, but need to know item index
+		self.srv.sendall( "\x9f\x00%s" % (struct.pack( "<L", itemIndex )))
+		
+	def itemEquip (self, itemID): # WORKS, but need to know item index
+		self.srv.sendall( "\xa9\x00%s" % ( struct.pack( "<L", itemID ) ) )
 
 	def NPCChoose( self, NPC, choice ):
 		'''Answer to an NPC choice. NPC is the NPCs ID (from the message received) and
@@ -715,11 +931,125 @@ class Connection:
 	def NPCNextDialog( self, NPC ):
 		'''Get the next dialog from an NPC. NPC is the NPCs id (from the message received).'''
 		self.srv.sendall( "\xb9%s" % ( struct.pack( "<L", NPC ) ) )
+	
+	def createParty (self, partyName): # WORKS
+		self.srv.sendall( "\xF9\0%s" % partyName.ljust(24, '\0'))
+		
+	def whereJozek (self): # GM chat messages, don't work although the packets sent by Python are identical 
+		self.srv.sendall( "\x8c\0\x13\x00\x4a\x6f\x7a\x65\x6b\x20\x3a\x20\x40\x77\x68\x65\x72\x65\x00" )
+		#self.srv.sendall( "\x8c\0%s" % (struct.pack("<H", "igor : @where jozek"))) 
+		
+	def whereAnyone (self, hunter, victim): # Works for Jozek -> igor
+		self.srv.sendall( "\x8c\x00\x18\x00%s : @where %s\x00" %(hunter, victim))
+		
+	def goToDroppedItem (self):
+		print "\n\n"
+		dIOID = Packet.droppedItemObjectID[0]
+		print "Dropped item index: %d" %dIOID
+		dIID = Packet.droppedItemID[0]
+		x_coord = Packet.droppedItem_x[0]
+		y_coord = Packet.droppedItem_y[0]
+		c.setDestination (x_coord -1, y_coord, 2)
+		time.sleep( 2 )
+		c.itemPickUp (dIOID)
+		
+	def followPlayer(self):
+		goTo_x = int(Packet.chatCoordinates_x)-1
+		goTo_y = int(Packet.chatCoordinates_y)
+		c.setDestination (goTo_x, goTo_y, 2)
+		
+	def takeAllDroppedItems(self):
+		
+		for key, value in Packet.droppedItemDict.items():
+			
+			itemID = key
+			print "ItemID: %d" %itemID
+
+			x = value[1]
+			print "x coord: %d" %x
+			
+			y = value[2]
+			print "y coord: %d" % y
+			
+			c.setDestination(x-1, y, 2)
+			time.sleep(2)
+			c.itemPickUp(itemID)
+			time.sleep(0.5)
+		
+	def talkToNPC (self, npcID): # works, BUT need to know NPC ID, and stand closer to it. NPC IDs become available by clicking "n" in game
+		self.srv.sendall( "\x90\x00%s" % (struct.pack("<L", npcID)))
+			
+	def tradeResponse(self, tradeAnsw): # WORKS
+		self.srv.sendall( "\xE6\x00%s" % (struct.pack("<B", tradeAnsw)))
+		
+	def experimentalSend(self): # experimental packets for sending to server and watching for responses
+		self.srv.sendall( "\xC1\0" )
+		
+	def sendTradeRequest(self): # WORKS, but currently with *fixed* being_id (b8:84:1e:00 -> igor). Need to know how to obtain being_ids.
+		self.srv.sendall( "\xe4\x00\xb8\x84\x1e\x00" )
+		
+	def followAnyPlayer(self, player_ID):
+		
+		if Packet.playerMovesTo_ID == player_ID:
+
+			# --- Version 1: call function manually to resume following: ---
+
+			#c.setDestination (Packet.playerMovesTo_x -1, Packet.playerMovesTo_y, 2)
+			
+			# --- Version 2: press CTRL+C to stop following: ---
+			
+			#try: 
+				#while True:
+					#c.setDestination (Packet.playerMovesTo_x -1, Packet.playerMovesTo_y, 2)
+					#time.sleep(1)
+			#except KeyboardInterrupt:
+				#exit
+			
+			# --- Version 3: press ANY KEY to stop following: ---
+			
+			while True:	
+				c.setDestination (Packet.playerMovesTo_x, Packet.playerMovesTo_y, 2)
+				if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+					line = raw_input()
+					break
+				time.sleep(1)
+			
+		else:
+			print "Some other player also moving."
+		
+		
+	def followAnyCritter(self, critterID):
+		
+		if Packet.critterMovesTo_ID == critterID:
+			
+			while True:	
+				
+				c.setDestination (Packet.critterMovesTo_x -1, Packet.critterMovesTo_y, 2)
+				
+				if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+					line = raw_input()
+					break
+					
+				time.sleep(1)
 
 
-SERVER = '' 
+	def tradeItems(self, itemID, itemNo):
+		self.srv.sendall( "\xe8\x00%s" % (struct.pack("<HL", itemID, itemNo)))
+		# pr. e8:00:04:00:02:00:00:00
+
+	def addItemsComplete(self):
+		self.srv.sendall( "\xeb\x00")
+		
+	def tradeComplete(self):
+		self.srv.sendall( "\xef\x00")
+
+	def answerToNPC(self, npcID, answer):
+		self.srv.sendall( "\xb8\x00%s" % (struct.pack("<LB", npcID, answer)))
+		
+	
+SERVER = ''
 PORT = 6901
-USERNAME = ''
+USERNAME = '' 
 PASSWORD = ''
 CHARACTER = 0 # index of character to play with (0 first, 1 second ...)
 
@@ -751,7 +1081,27 @@ if __name__ == '__main__':
 		print "5. Whisper"
 		print "6. Stop Attack"
 		print "7. Pick Item"
+		print "8. Equip Item"
 		print "9. EXIT"
+		print "10. Create party"
+		print "11. Where Jozek?"
+		print "12. Go near the last dropped item!"
+		print "13. Go near the player!"
+		print "14. Where is anyone?" 
+		print "15. Go to Igor!"
+		print "16. Take all dropped items!"
+		print "17. Talk to NPC"
+		print "18. TRADE ANSW: Answer Trade Request"
+		print "19. exp: CMSG_WHO_REQUEST"
+		print "20. TRADE REQ: Send Trade Request (to Igor)"
+		print "21. Follow player"
+		print "22. Follow critter"
+		#print "23. Follow critter and attack"
+		print "24. TRADE: add items"
+		print "25. TRADE: done adding items"
+		print "26. TRADE: CONFIRM&DONE"
+		print "27. NPC: Answer to the man/lady"
+		
 		
 		print 67 * "-"
 		
@@ -789,10 +1139,87 @@ if __name__ == '__main__':
 			
 		elif command == "7": 	
 			c.itemPickUp()
+		
+		elif command == "8": 
 			
+			itemID = int(raw_input("Enter item ID: "))
+			c.itemEquip(itemID)	
+		
 		elif command == "9": 
 			break
 		
+		elif command == "10": 
+			partyName = raw_input("Party name: ")
+			c.createParty(partyName) 
+			
+		elif command == "11": 
+			c.whereJozek()
+			
+		elif command == "12":
+			c.goToDroppedItem()
+			
+		elif command == "13":
+			c.followPlayer()
+			
+		elif command == "14":
+			hunter = raw_input("Enter your nickname: ")
+			victim = raw_input("Whom do you seek?: ")
+			c.whereAnyone (hunter, victim)
+			
+		elif command == "15":
+			c.whereAnyone("Jozek", "igor")
+			time.sleep(1)
+			c.followPlayer()
+			
+		elif command == "16":
+			c.takeAllDroppedItems()
+			
+		elif command == "17":
+			npcID = int(raw_input("Enter NPC id: "))
+			c.talkToNPC(npcID)
+
+		elif command == "18":
+			tradeAns = raw_input("Y/N: ")
+			if tradeAns == "Y":
+				c.tradeResponse(3)
+			else:
+				c.tradeResponse(4)
+		
+		elif command == "19":	
+			c.experimentalSend()
+			
+	
+		elif command == "20":	
+			c.sendTradeRequest()
+			
+			
+		elif command == "21":	
+			followWho = int(raw_input("Please enter player ID: "))
+			c.followAnyPlayer(followWho)
+			
+			
+		elif command == "22":
+			followWhat = int(raw_input("Please enter critter ID: "))
+			c.followAnyCritter(followWhat)
+			
+			
+		elif command == "24":
+			itemIndex = int(raw_input("Please enter item Index: "))	
+			itemQ = int(raw_input("Please enter quantity: "))
+			c.tradeItems(itemIndex, itemQ)
+			
+		
+		elif command == "25":
+			c.addItemsComplete()
+			
+		elif command == "26":
+			c.tradeComplete()
+		
+		elif command == "27": # Sending identical packet as a real client, but no response?
+			npcID = int(raw_input("Please enter npc ID: "))
+			answer = int(raw_input("Please enter your choice: "))
+			c.answerToNPC(npcID, answer)
+	
 	
 	'''
 	for i, j in zip( range( 50, 90 ), range( 50, 90 ) ): 
