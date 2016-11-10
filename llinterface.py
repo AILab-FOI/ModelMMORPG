@@ -727,7 +727,8 @@ class Packet:
 			npcID = struct.unpack( "<L", self.data[ 4:8 ] )[0]
 			print "Getting message from NPC with ID:"
 			print npcID
-					
+			npcMessage = self.data[ 8: ]
+			print npcMessage		
 					
 	def _parse_ip( self, string ):
 		'''Parse an IP address'''
