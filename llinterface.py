@@ -563,10 +563,10 @@ class Packet:
 			#self.message = self.data[ 8:-1 ]
 			#self.NPCid =  struct.unpack( "<L", self.data[ 4:8 ] )[ 0 ]
 		
-		elif self.type == 'SMSG_NPC_CHOICE':
-			self.message = self.data[ 8:-1 ]
-			self.choices = self.message.split( ':' )[ :-1 ]
-			self.NPCid =  struct.unpack( "<L", self.data[ 4:8 ] )[ 0 ]
+		#elif self.type == 'SMSG_NPC_CHOICE':
+			#self.message = self.data[ 8:-1 ]
+			#self.choices = self.message.split( ':' )[ :-1 ]
+			#self.NPCid =  struct.unpack( "<L", self.data[ 4:8 ] )[ 0 ]
 		
 		elif self.type == 'SMSG_PLAYER_WARP':
 			self.map = self.data.split( '\0' )[ 1 ]
@@ -722,13 +722,19 @@ class Packet:
 			print "Someone moved to %d, %d" %(x,y)
 			
 			
-		elif self.type == 'SMSG_NPC_MESSAGE': # WORKS, BUT jozek needs to send message to npc in order for client to detect message
+		elif self.type == 'SMSG_NPC_MESSAGE' or self.type == 'SMSG_NPC_CHOICE': 
 			
 			npcID = struct.unpack( "<L", self.data[ 4:8 ] )[0]
 			print "Getting message from NPC with ID:"
 			print npcID
 			npcMessage = self.data[ 8: ]
-			print npcMessage		
+			print "\n\n" 
+			print npcMessage
+		
+		#elif self.type == 'SMSG_NPC_CHOICE':
+			#npcMessageQuery = self.data[ 8: ]
+			#print "\n\nChoose answer\n\n"
+			#print npcMessageQuery
 					
 	def _parse_ip( self, string ):
 		'''Parse an IP address'''
@@ -978,7 +984,7 @@ class Connection:
 			time.sleep(0.5)
 		
 	def talkToNPC (self, npcID): # works, BUT need to know NPC ID, and stand closer to it. NPC IDs become available by clicking "n" in game
-		self.srv.sendall( "\x90\x00%s" % (struct.pack("<L", npcID)))
+		self.srv.sendall( "\x90\x00%s\x00" % (struct.pack("<L", npcID)))
 			
 	def tradeResponse(self, tradeAnsw): # WORKS
 		self.srv.sendall( "\xE6\x00%s" % (struct.pack("<B", tradeAnsw)))
@@ -1047,11 +1053,15 @@ class Connection:
 	def answerToNPC(self, npcID, answer):
 		self.srv.sendall( "\xb8\x00%s" % (struct.pack("<LB", npcID, answer)))
 		
+	def closeCommunication(self, npcID):
+		self.srv.sendall( "\x46\x01%s" % (struct.pack("<L", npcID )))
+		
+		
 	
-SERVER = ''
+SERVER = '' 
 PORT = 6901
 USERNAME = '' 
-PASSWORD = ''
+PASSWORD = '' 
 CHARACTER = 0 # index of character to play with (0 first, 1 second ...)
 
 if __name__ == '__main__':
@@ -1102,6 +1112,7 @@ if __name__ == '__main__':
 		print "25. TRADE: done adding items"
 		print "26. TRADE: CONFIRM&DONE"
 		print "27. NPC: Answer to the man/lady"
+		print "28. NPC: Stop communication"
 		
 		
 		print 67 * "-"
@@ -1220,6 +1231,10 @@ if __name__ == '__main__':
 			npcID = int(raw_input("Please enter npc ID: "))
 			answer = int(raw_input("Please enter your choice: "))
 			c.answerToNPC(npcID, answer)
+			
+		elif command == "28":
+			npcID = int(raw_input("Please enter npc ID: "))
+			c.closeCommunication(npcID)
 	
 	
 	'''
