@@ -31,6 +31,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def __init__( self, SERVER, PORT, USERNAME, PASSWORD, CHARACTER, *args, **kwargs ):
 		spade.Agent.Agent.__init__( self, *args, **kwargs )
 		lli.Connection.__init__( self, SERVER, PORT, USERNAME, PASSWORD, CHARACTER )
+		lli.CHARACTER = self.name.split( '@' )[ 0 ]
 		
 		self.kb = KB()
 		try:		
@@ -54,12 +55,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		login = self.Login()
 		self.addBehaviour( login )
 
-SERVER = 'dragon.foi.hr' 
-PORT = 6901
-USERNAME = ''
-PASSWORD = ''
-CHARACTER = 0
-
 if __name__ == '__main__':
+	from testconf import *
 	a = ManaWorldPlayer( SERVER, PORT, USERNAME, PASSWORD, CHARACTER, 'player@127.0.0.1', 'tajna' )
 	a.start()

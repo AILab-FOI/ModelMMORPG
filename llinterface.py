@@ -10,6 +10,19 @@ import re
 import select
 import os
 
+
+DEBUG = True
+CHARACTER = None
+
+def debug( *msg ):
+	msg = [ str( i ) for i in msg ]
+	msg = ' '.join( msg )
+	if( DEBUG ):
+		if CHARACTER:
+			print CHARACTER + ': ' + str( msg )
+		else:
+			print msg
+
 '''Dictionary holds HEX codes of packets as keys with packet length 
 and packet name as values in a tuple.'''
 PACKETS = {
@@ -288,8 +301,8 @@ class PacketBuffer( threading.Thread ):
 			if buff:
 				packet = Packet( buff )
 				self.packets.append( packet )
-				#print "\n\n"
-				#print self.packets
+				#debug( "\n\n" )
+				#debug( self.packets )
 			if self.kill:
 				return
 			
@@ -313,21 +326,21 @@ class PacketBuffer( threading.Thread ):
 					if data[ 0 ] != '\x81' and data[ 1 ] != '\x00': 
 						'''The code is in the first two bytes''' 
 						code = struct.unpack( "<H", data[ 0:2 ] )[ 0 ]						
-						#print "\n\n"	#DEBUG
-						#print code		#DEBUG
+						#debug( "\n\n"	#DEBUG )
+						#debug( code		#DEBUG )
 						
 					else:
 						'''But sometimes also in only the first byte'''
 						code = ord( data[ 0 ] )
-						#print "\n\n"	#DEBUG
-						#print code		#DEBUG
+						#debug( "\n\n"	#DEBUG )
+						#debug( code		#DEBUG )
 					
 					length = PACKETS[ code ][ 0 ]
 					
 					'''If the length is -1 the length is encoded in the 3rd and 4th byte'''
 					if length == -1:
 						length = struct.unpack( '<H', data[ 2:4 ] )[ 0 ]
-					#print length, PACKETS[ code ][ 1 ], '\n', Packet( data[ :length ] )
+					#debug( length, PACKETS[ code ][ 1 ], '\n', Packet( data[ :length ] ) )
 					if len( data ) >= length:
 						self.buffer = data[ length: ]
 						return data[ :length ]
@@ -359,7 +372,7 @@ class PacketBuffer( threading.Thread ):
 		self.stahp = False
 
 	def getNew( self, typ=None, timeout=10 ):
-		
+		''' Get new packet '''
 		if typ:
 			if type( typ ) == str:
 				typ = ( typ, )
@@ -422,7 +435,7 @@ class Packet:
 		self.seen = False
 
 	def __str__( self ):
-		'''Print a packet in hexadecimal notation (for debug only)'''
+		'''debug( a packet in hexadecimal notation (for debug only)'''
 		if not self.data:
 			raise ValueError, 'Empty packet!'
 		ret = ''
@@ -433,12 +446,10 @@ class Packet:
 
 
 	def interpret( self ):
-		
 		'''Parse the packet and assign adequate attributes to the object depending 
 		on the packet type'''
 		
 		if self.type == 'SMSG_LOGIN_DATA':
-			
 			'''
 			SMSG_LOGIN_DATA
 			Sent in response to Login Request. This packet is sent to the client by the server to define the character sex,
@@ -456,8 +467,6 @@ class Packet:
 			self.charport = struct.unpack( "<H", buff[ 4:6 ] )[ 0 ]
 		
 		elif self.type == 'SMSG_CHAR_LOGIN':
-			
-			
 			'''
 			SMSG_CHAR_LOGIN
 			Sent in response to Character Server Connection Request, either directly or via Net:0x2713.
@@ -576,75 +585,75 @@ class Packet:
 		elif self.type == 'SMSG_ITEM_DROPPED':
 			
 			Packet.droppedItemObjectID = struct.unpack ("<L", self.data[2:6])[0]
-			#print "\ndroppedItemObjectID: %d" %Packet.droppedItemObjectID
+			#debug( "\ndroppedItemObjectID: %d" %Packet.droppedItemObjectID )
 			
 			Packet.droppedItemID = struct.unpack ("<H", self.data[6:8])[0]
-			#print "\ndroppedItemID: %d"  %Packet.droppedItemID
+			#debug( "\ndroppedItemID: %d"  %Packet.droppedItemID )
 			
 			Packet.droppedItem_x = struct.unpack ("<H", self.data[9:11])[0]
-			#print "\nx: %d" %Packet.droppedItem_x
+			#debug( "\nx: %d" %Packet.droppedItem_x )
 			
 			Packet.droppedItem_y = struct.unpack ("<H", self.data[11:13])[0]
-			#print "\ny: %d" % Packet.droppedItem_y
+			#debug( "\ny: %d" % Packet.droppedItem_y )
 			
 			Packet.droppedItemAmount = struct.unpack ("<H", self.data[15:17])[0]
-			#print "\nAmount: %d" %Packet.droppedItemAmount
+			#debug( "\nAmount: %d" %Packet.droppedItemAmount )
 			
 			Packet.droppedItemDict[Packet.droppedItemObjectID]=[Packet.droppedItemID, Packet.droppedItem_x, Packet.droppedItem_y, Packet.droppedItemAmount]
-			print "\n"
-			print Packet.droppedItemDict
+			debug( "\n" )
+			debug( Packet.droppedItemDict )
 	
 		
 		#elif self.type == 'SMSG_PLAYER_INVENTORY_ADD': # NE REGISTRIRA POJAVU OVOG PAKETA
 			
-			#print "\n -- added stuff to inventory!"
+			#debug( "\n -- added stuff to inventory!" )
 			#droppedItemID = struct.unpack ("<L", self.data[-4:])
-			#print droppedItemID
+			#debug( droppedItemID )
 		
 
 		elif self.type == 'SMSG_ITEM_REMOVE':
-			print "\n -- added stuff to inventory and removed from map!"
+			debug( "\n -- added stuff to inventory and removed from map!" )
 			droppedItemID = struct.unpack ("<L", self.data[-4:])[0]
-			print "Removed item ID: %d" %droppedItemID
+			debug( "Removed item ID: %d" %droppedItemID )
 			del Packet.droppedItemDict[droppedItemID]
-			print "\nUpdated list of items on the map:"
-			print Packet.droppedItemDict
+			debug( "\nUpdated list of items on the map:" )
+			debug( Packet.droppedItemDict )
 			
 
 			
 		elif self.type == 'SMSG_PLAYER_CHAT':
 			
 			if re.match (".*[a-z]+\:\ [0-9]+\-[0-9]\ \([0-9]+\,[0-9]+", self.data) is not None:
-				print "\n\nIncoming coordinates found!"
+				debug( "\n\nIncoming coordinates found!" )
 				Packet.chatCoordinates = self.data
 				Packet.chatCoordinates = list(Packet.chatCoordinates) 
-				#print Packet.chatCoordinates
+				#debug( Packet.chatCoordinates )
 				pos = Packet.chatCoordinates.index("(")
 				del Packet.chatCoordinates[:pos+1]
-				#print "\n\n"
-				#print Packet.chatCoordinates
+				#debug( "\n\n" )
+				#debug( Packet.chatCoordinates )
 				pos = Packet.chatCoordinates.index(")")
 				del Packet.chatCoordinates[pos:]
-				#print "\n\n"
-				#print Packet.chatCoordinates
+				#debug( "\n\n" )
+				#debug( Packet.chatCoordinates )
 				pos = Packet.chatCoordinates.index(",")
 				Packet.chatCoordinates_x = "".join(Packet.chatCoordinates[:pos])
-				print "\n\n"  
-				print "Coordinates X: %s" %Packet.chatCoordinates_x
+				debug( "\n\n"   )
+				debug( "Coordinates X: %s" %Packet.chatCoordinates_x )
 				Packet.chatCoordinates_y = "".join(Packet.chatCoordinates[pos+1:])
-				print "Coordinates Y: %s" %Packet.chatCoordinates_y
+				debug( "Coordinates Y: %s" %Packet.chatCoordinates_y )
 			
 			#else:
-				#print "\n\nnon-coordinates chat inbound: %s" %self.data
+				#debug( "\n\nnon-coordinates chat inbound: %s" %self.data )
 				
 		elif self.type == 'SMSG_TRADE_REQUEST':		
-			print "\n\nTrade request inbound! Use main menu to answer."
+			debug( "\n\nTrade request inbound! Use main menu to answer." )
 			
 		
 		elif self.type == 'SMSG_BEING_MOVE':
 			
 			self.CritterID =  struct.unpack( "<L", self.data[ 2:6 ] )[0] #WORKS; gets being ID
-			print self.CritterID
+			debug( self.CritterID )
 			
 			# coordinates work, but values represent FINAL destination of the monster, not step-by-step.
 			x_1 = struct.unpack ("<B", self.data[52])[0]
@@ -654,7 +663,7 @@ class Packet:
 			x = x_1[6:] + x_2[:6]
 			x = int(x, 2)
 			
-			#print int(x, 2)
+			#debug( int(x, 2) )
 			
 			y_1 = struct.unpack ("<B", self.data[53])[0]
 			y_2 = struct.unpack ("<B", self.data[54])[0]
@@ -663,7 +672,7 @@ class Packet:
 			y = y_1[6:] + y_2
 			y = int(y, 2)
 			
-			#print int(y, 2)
+			#debug( int(y, 2) )
 			
 			Packet.critterMovesTo_ID = self.CritterID
 			Packet.critterMovesTo_x = x
@@ -675,7 +684,7 @@ class Packet:
 			# WORKS
 			
 			self.PlayerID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
-			print "Player %s moved" %self.PlayerID
+			debug( "Player %s moved" %self.PlayerID )
 			
 			x_1 = struct.unpack ("<B", self.data[52])[0]
 			x_2 = struct.unpack ("<B", self.data[53])[0]
@@ -694,13 +703,13 @@ class Packet:
 			
 			
 			Packet.playerMovesTo_ID = self.PlayerID
-			#print Packet.playerMovesTo_ID
+			#debug( Packet.playerMovesTo_ID )
 			Packet.playerMovesTo_x = x
 			Packet.playerMovesTo_y = y
 		
 			
 		elif self.type == 'SMSG_PLAYER_INVENTORY':
-			print "\n\n\nINVENTORY DETECTED! \n\n\n"
+			debug( "\n\n\nINVENTORY DETECTED! \n\n\n" )
 			
 			
 		elif self.type == 'SMSG_WALK_RESPONSE': # CLIENT JOZEK CAN'T DETECT PACKAGE WHEN IGOR MOVES
@@ -719,22 +728,22 @@ class Packet:
 			y = y_1[6:] + y_2
 			y = int(y, 2)
 
-			print "Someone moved to %d, %d" %(x,y)
+			debug( "Someone moved to %d, %d" %(x,y) )
 			
 			
 		elif self.type == 'SMSG_NPC_MESSAGE' or self.type == 'SMSG_NPC_CHOICE': 
 			
 			npcID = struct.unpack( "<L", self.data[ 4:8 ] )[0]
-			print "Getting message from NPC with ID:"
-			print npcID
+			debug( "Getting message from NPC with ID:" )
+			debug( npcID )
 			npcMessage = self.data[ 8: ]
-			print "\n\n" 
-			print npcMessage
+			debug( "\n\n"  )
+			debug( npcMessage )
 		
 		#elif self.type == 'SMSG_NPC_CHOICE':
 			#npcMessageQuery = self.data[ 8: ]
-			#print "\n\nChoose answer\n\n"
-			#print npcMessageQuery
+			#debug( "\n\nChoose answer\n\n" )
+			#debug( npcMessageQuery )
 					
 	def _parse_ip( self, string ):
 		'''Parse an IP address'''
@@ -782,12 +791,10 @@ class Connection:
 		
 		self.pb.start()
 		
-		print '\nConnected to server: %s:%d' % ( self.server, self.port )
-		#self.srv.sendall( "\x64\0\0\0\0\0%s%s\x27" % ( self.username.ljust( 24, '\0' ), self.password.ljust( 24, '\0' ) ) )
+		debug( '\nConnected to server: %s:%d' % ( self.server, self.port ) )
 		self.srv.sendall( "\x64\0\1\0\6\0%s%s\x27" % ( self.username.ljust( 24, '\0' ), self.password.ljust( 24, '\0' ) ) )
 
 		buff = self.pb.getNew( 'SMSG_LOGIN_DATA' ) 
-		
 		'''
 		SMSG_LOGIN_DATA, 0x0069,  Login Data
 		Sent in response to Login Request. This packet is sent to the client by the server to define 
@@ -801,10 +808,9 @@ class Connection:
 
 		# now get the login data out of the packet and connect to the character server
 		self.id1, self.accid, self.id2, self.sex = buff.id1, buff.accid, buff.id2, buff.sex
-		charip = '161.53.120.2'  ###buff.charip # dragon.foi.hr
-		#charip = '127.0.0.1'
-		charport = buff.charport # Izvlačimo port iz dolaznog paketa sa servera?
-		print 'Login successful! Connecting to character server a %s:%d...' % ( charip, charport )
+		charip = self.server
+		charport = buff.charport 
+		debug( 'Login successful! Connecting to character server a %s:%d...' % ( charip, charport ) )
 		self.srv.close()
 		self.pb.stop()
 
@@ -812,32 +818,31 @@ class Connection:
 		self.srv = socket.socket()
 		self.pb.srv = self.srv
 		self.srv.connect( ( charip, charport ) )
-		print 'Connected to character server! Selecting character...'
+		debug( 'Connected to character server! Selecting character...' )
 
 		self.srv.sendall( "\x65\0%s\0\0%s" % ( struct.pack( "<LLL", self.accid, self.id1, self.id2 ), chr( self.sex ) ) )
 		
 		self.pb.go()
 		
 		buff = self.pb.getNew( 'SMSG_CHAR_LOGIN', timeout=20 )
-			# ok got character information, extract the names (send \x66 to get mapserver info, and login then)
+		# ok got character information, extract the names (send \x66 to get mapserver info, and login then)
 		self.character_list = buff.charlist
 		self.characters = buff.characters
-		print "Available characters:"
+		debug( "Available characters:" )
 		
 		for j in [ i.__dict__ for i in self.characters.values() ]:
-			print j[ "name" ]
-			print j
+			debug( j[ "name" ] )
+			debug( j )
 
 		self.pb.stop()
 		self.srv.sendall( "\x66\0%s" % chr( self.character ) )
 		self.pb.go()
 		
-		print "Get map info"
+		debug( "Get map info" )
 		buff = self.pb.getNew( 'SMSG_CHAR_MAP_INFO' )
 		
 		charid = buff.charid
-		mapip = '161.53.120.2'
-		#mapip = '127.0.0.1' 
+		mapip = self.server
 		mapport = buff.mapport
 		
 		self.srv.close()
@@ -847,10 +852,10 @@ class Connection:
 		self.srv = socket.socket()
 		self.pb.srv = self.srv
 		self.srv.connect( ( mapip, mapport ) )
-		print "Connected to map server..."
+		debug( "Connected to map server..." )
 		
 		c = self.character_list[ self.character ] # get selected character
-		print "Character '%s' selected. Connecting to map server at %s:%d" % ( c.name, mapip, mapport )
+		debug( "Character '%s' selected. Connecting to map server at %s:%d" % ( c.name, mapip, mapport ) )
 		self.srv.sendall( "\x72\0%s" % struct.pack( "<LLLLB", self.accid, c.char_id, self.id1, self.id2, self.sex ) )
 		self.pb.go()			
 
@@ -859,7 +864,7 @@ class Connection:
 
 		# connected, send to server that the map has been loaded
 		self.srv.sendall( "\x7d\0" )
-		print "Map loaded"
+		debug( "Map loaded" )
 
 	def quit( self ):
 		'''Logout from server'''
@@ -887,15 +892,15 @@ class Connection:
 	def setDirection( self, direction ):
 		'''Set direction (turn 1 - down, 2 - left, 6 - up, 8 - right)'''
 		self.srv.sendall( "\x9b\0\0\0%s" % struct.pack( "<B", direction ) )
-		print "Character moved!"
+		debug( "Character moved!" )
 
 	def setDestination( self, x, y, direction ):
 		'''Set destination (walk to given x, y coordinates with orientation direction like in setDirection)'''
 		''' use \where in chat to get coordinates # OR PRESS F10) '''
 		
-		print "SET DESTINATION"
-		print "X: %d" %x
-		print "Y: %d" %y
+		debug( "SET DESTINATION" )
+		debug( "X: %d" %x )
+		debug( "Y: %d" %y )
 		
 		data = bin(x)[-10:].replace( 'b', '0' ).rjust(10).replace( ' ', '0' ) + bin(y)[-10:].replace( 'b', '0' ).rjust(10).replace( ' ', '0' ) + bin(direction)[-4:].replace( 'b', '0' ).rjust(4).replace( ' ', '0' )
 		
@@ -908,7 +913,7 @@ class Connection:
 	def sit( self ):
 		'''Sit and don't move ;-)'''
 		self.srv.sendall("\x89\0\0\0\0\0\x02") 
-		print "Sitting!"
+		debug( "Sitting!" )
 		
 
 	def stand( self ):
@@ -950,9 +955,9 @@ class Connection:
 		self.srv.sendall( "\x8c\x00\x18\x00%s : @where %s\x00" %(hunter, victim))
 		
 	def goToDroppedItem (self):
-		print "\n\n"
+		debug( "\n\n" )
 		dIOID = Packet.droppedItemObjectID[0]
-		print "Dropped item index: %d" %dIOID
+		debug( "Dropped item index: %d" %dIOID )
 		dIID = Packet.droppedItemID[0]
 		x_coord = Packet.droppedItem_x[0]
 		y_coord = Packet.droppedItem_y[0]
@@ -970,13 +975,13 @@ class Connection:
 		for key, value in Packet.droppedItemDict.items():
 			
 			itemID = key
-			print "ItemID: %d" %itemID
+			debug( "ItemID: %d" %itemID )
 
 			x = value[1]
-			print "x coord: %d" %x
+			debug( "x coord: %d" %x )
 			
 			y = value[2]
-			print "y coord: %d" % y
+			debug( "y coord: %d" % y )
 			
 			c.setDestination(x-1, y, 2)
 			time.sleep(2)
@@ -1022,7 +1027,7 @@ class Connection:
 				time.sleep(1)
 			
 		else:
-			print "Some other player also moving."
+			debug( "Some other player also moving." )
 		
 		
 	def followAnyCritter(self, critterID):
@@ -1055,16 +1060,9 @@ class Connection:
 		
 	def closeCommunication(self, npcID):
 		self.srv.sendall( "\x46\x01%s" % (struct.pack("<L", npcID )))
-		
-		
-	
-SERVER = '' 
-PORT = 6901
-USERNAME = '' 
-PASSWORD = '' 
-CHARACTER = 0 # index of character to play with (0 first, 1 second ...)
 
 if __name__ == '__main__':
+	from testconf import * 
 	c = Connection( SERVER, PORT, USERNAME, PASSWORD, CHARACTER )
 	c.login()
 
@@ -1077,45 +1075,45 @@ if __name__ == '__main__':
 
 	while True:
 	
-		print "\n\n"
-		print "      ", 46 * "#"
-		print "       # ModelMMORPG Low Level TMW Python Interface #"
-		print "      ", 46 * "#"
-		print "\n"
+		debug( "\n\n" )
+		debug( "      ", 46 * "#" )
+		debug( "       # ModelMMORPG Low Level TMW Python Interface #" )
+		debug( "      ", 46 * "#" )
+		debug( "\n" )
 		
-		print 30 * "-" , "MENU" , 30 * "-"
+		debug( 30 * "-" , "MENU" , 30 * "-" )
 
-		print "1. Navigation"
-		print "2. Attack"
-		print "3. Sit"
-		print "4. Stand"
-		print "5. Whisper"
-		print "6. Stop Attack"
-		print "7. Pick Item"
-		print "8. Equip Item"
-		print "9. EXIT"
-		print "10. Create party"
-		print "11. Where Jozek?"
-		print "12. Go near the last dropped item!"
-		print "13. Go near the player!"
-		print "14. Where is anyone?" 
-		print "15. Go to Igor!"
-		print "16. Take all dropped items!"
-		print "17. Talk to NPC"
-		print "18. TRADE ANSW: Answer Trade Request"
-		print "19. exp: CMSG_WHO_REQUEST"
-		print "20. TRADE REQ: Send Trade Request (to Igor)"
-		print "21. Follow player"
-		print "22. Follow critter"
-		#print "23. Follow critter and attack"
-		print "24. TRADE: add items"
-		print "25. TRADE: done adding items"
-		print "26. TRADE: CONFIRM&DONE"
-		print "27. NPC: Answer to the man/lady"
-		print "28. NPC: Stop communication"
+		debug( "1. Navigation" )
+		debug( "2. Attack" )
+		debug( "3. Sit" )
+		debug( "4. Stand" )
+		debug( "5. Whisper" )
+		debug( "6. Stop Attack" )
+		debug( "7. Pick Item" )
+		debug( "8. Equip Item" )
+		debug( "9. EXIT" )
+		debug( "10. Create party" )
+		debug( "11. Where Jozek?" )
+		debug( "12. Go near the last dropped item!" )
+		debug( "13. Go near the player!" )
+		debug( "14. Where is anyone?"  )
+		debug( "15. Go to Igor!" )
+		debug( "16. Take all dropped items!" )
+		debug( "17. Talk to NPC" )
+		debug( "18. TRADE ANSW: Answer Trade Request" )
+		debug( "19. exp: CMSG_WHO_REQUEST" )
+		debug( "20. TRADE REQ: Send Trade Request (to Igor)" )
+		debug( "21. Follow player" )
+		debug( "22. Follow critter" )
+		#debug( "23. Follow critter and attack" )
+		debug( "24. TRADE: add items" )
+		debug( "25. TRADE: done adding items" )
+		debug( "26. TRADE: CONFIRM&DONE" )
+		debug( "27. NPC: Answer to the man/lady" )
+		debug( "28. NPC: Stop communication" )
 		
 		
-		print 67 * "-"
+		debug( 67 * "-" )
 		
 		command = raw_input("Choose Menu option: ")
 		
@@ -1246,7 +1244,7 @@ if __name__ == '__main__':
 
 
 	time.sleep( 2 )
-	print [ (i.type, i.data) for i in c.pb.packets ]
+	debug( [ (i.type, i.data) for i in c.pb.packets ] )
 
 	'''
 	m1 = c.pb.getNew( ( 'SMSG_NPC_MESSAGE', 'SMSG_PLAYER_CHAT' ) )
@@ -1254,10 +1252,10 @@ if __name__ == '__main__':
 	if m2.type != 'SMSG_PLAYER_WARP':
 		m3 = c.pb.getNew( 'SMSG_NPC_CHOICE' )
 
-		print m1.NPCid
-		print m1.message
-		print m2.message
-		print m3.choices
+		debug( m1.NPCid )
+		debug( m1.message )
+		debug( m2.message )
+		debug( m3.choices )
 
 		c.NPCChoose( m1.NPCid, 1 )
 
@@ -1283,10 +1281,11 @@ if __name__ == '__main__':
 		
 		time.sleep( 1 )
 	else:
-		print m2.map, m2.x, m2.y
+		debug( m2.map, m2.x, m2.y )
 
 
-	print [ (i.type, i.data) for i in c.pb.packets ]
+	debug( [ (i.type, i.data) for i in c.pb.packets ] )
 	'''
 	c.quit() # works
 	sys.exit()
+
