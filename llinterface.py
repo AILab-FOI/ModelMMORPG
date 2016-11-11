@@ -1060,6 +1060,10 @@ class Connection:
 		
 	def closeCommunication(self, npcID):
 		self.srv.sendall( "\x46\x01%s" % (struct.pack("<L", npcID )))
+		
+	def inviteToParty(self, npcID):
+		self.srv.sendall( "\xfc\x00%s" % (struct.pack("<L", npcID )))	
+	
 
 if __name__ == '__main__':
 	from testconf import * 
@@ -1092,7 +1096,7 @@ if __name__ == '__main__':
 		debug( "7. Pick Item" )
 		debug( "8. Equip Item" )
 		debug( "9. EXIT" )
-		debug( "10. Create party" )
+		debug( "10. PARTY: Create party" )
 		debug( "11. Where Jozek?" )
 		debug( "12. Go near the last dropped item!" )
 		debug( "13. Go near the player!" )
@@ -1111,6 +1115,7 @@ if __name__ == '__main__':
 		debug( "26. TRADE: CONFIRM&DONE" )
 		debug( "27. NPC: Answer to the man/lady" )
 		debug( "28. NPC: Stop communication" )
+		debug( "29. PARTY: Invite to Party" )
 		
 		
 		debug( 67 * "-" )
@@ -1233,6 +1238,11 @@ if __name__ == '__main__':
 		elif command == "28":
 			npcID = int(raw_input("Please enter npc ID: "))
 			c.closeCommunication(npcID)
+			
+		elif command == "29":
+			npcID = int(raw_input("Please enter ID of the player you wish to invite: "))
+			c.inviteToParty(npcID)	
+		
 	
 	
 	'''
