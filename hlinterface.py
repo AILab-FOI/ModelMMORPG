@@ -28,6 +28,12 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			# plan
 			pass
 
+	class ChangeRole(spade.Behaviour.OneShotBehaviour):
+		"""Behaviour to change the Role of the Agent. The Agent will acquire behaviours of the needed Role."""
+		def _process(self):
+			pass
+			
+
 	def __init__( self, SERVER, PORT, USERNAME, PASSWORD, CHARACTER, *args, **kwargs ):
 		spade.Agent.Agent.__init__( self, *args, **kwargs )
 		lli.Connection.__init__( self, SERVER, PORT, USERNAME, PASSWORD, CHARACTER )
