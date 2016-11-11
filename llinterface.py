@@ -653,7 +653,7 @@ class Packet:
 		elif self.type == 'SMSG_BEING_MOVE':
 			
 			self.CritterID =  struct.unpack( "<L", self.data[ 2:6 ] )[0] #WORKS; gets being ID
-			debug( self.CritterID )
+			#debug( self.CritterID )
 			
 			# coordinates work, but values represent FINAL destination of the monster, not step-by-step.
 			x_1 = struct.unpack ("<B", self.data[52])[0]
@@ -1063,6 +1063,9 @@ class Connection:
 		
 	def inviteToParty(self, npcID):
 		self.srv.sendall( "\xfc\x00%s" % (struct.pack("<L", npcID )))	
+		
+	def leaveParty(self):
+		self.srv.sendall( "\x00\x01" )	
 	
 
 if __name__ == '__main__':
@@ -1116,6 +1119,7 @@ if __name__ == '__main__':
 		debug( "27. NPC: Answer to the man/lady" )
 		debug( "28. NPC: Stop communication" )
 		debug( "29. PARTY: Invite to Party" )
+		debug( "30. PARTY: Leave Party" )
 		
 		
 		debug( 67 * "-" )
@@ -1243,6 +1247,8 @@ if __name__ == '__main__':
 			npcID = int(raw_input("Please enter ID of the player you wish to invite: "))
 			c.inviteToParty(npcID)	
 		
+		elif command == "30":
+			c.leaveParty()
 	
 	
 	'''
