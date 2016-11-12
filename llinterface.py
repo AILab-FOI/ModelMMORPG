@@ -412,6 +412,8 @@ class Packet:
 	critterMovesTo_x = None
 	critterMovesTo_y = None
 	
+	whoInvites = None
+	
 	
 	
 	def __init__( self, data=None ):
@@ -744,6 +746,12 @@ class Packet:
 			#npcMessageQuery = self.data[ 8: ]
 			#debug( "\n\nChoose answer\n\n" )
 			#debug( npcMessageQuery )
+			
+		elif self.type == 'SMSG_PARTY_INVITED':
+			Packet.whoInvites = struct.unpack( "<L", self.data[ 2:6 ] )[0]
+			whichParty = self.data[ 6: ]
+			debug( "\nYou got an invitation from %s to join party %s " %(Packet.whoInvites, whichParty) )
+					
 					
 	def _parse_ip( self, string ):
 		'''Parse an IP address'''
@@ -1066,6 +1074,9 @@ class Connection:
 		
 	def leaveParty(self):
 		self.srv.sendall( "\x00\x01" )	
+		
+	def responseToPartyInvite(self, responseToInvite):
+		self.srv.sendall("\xff\x00%s\x00\x00\x00" % (struct.pack("<LB", Packet.whoInvites, responseToInvite)))
 	
 
 if __name__ == '__main__':
@@ -1120,6 +1131,7 @@ if __name__ == '__main__':
 		debug( "28. NPC: Stop communication" )
 		debug( "29. PARTY: Invite to Party" )
 		debug( "30. PARTY: Leave Party" )
+		debug( "31. PARTY: Response to a Party Invitation" )
 		
 		
 		debug( 67 * "-" )
@@ -1249,6 +1261,10 @@ if __name__ == '__main__':
 		
 		elif command == "30":
 			c.leaveParty()
+			
+		elif command == "31":
+			responseToInvite = int(raw_input("Type 1 for accept, 0 for refuse: "))
+			c.responseToPartyInvite(responseToInvite)
 	
 	
 	'''
