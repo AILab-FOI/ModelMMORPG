@@ -752,6 +752,12 @@ class Packet:
 			whichParty = self.data[ 6: ]
 			debug( "\nYou got an invitation from %s to join party %s " %(Packet.whoInvites, whichParty) )
 					
+		elif self.type == 'SMSG_PARTY_MESSAGE':
+			partyMessageSender = struct.unpack( "<L", self.data[ 4:8 ] )[0]
+			partyMesageTxt = self.data[ 8: ]
+			debug( "\nParty chat message received from player: %d" % partyMessageSender)
+			debug( "\nParty chat message: %s" % partyMesageTxt)
+			
 					
 	def _parse_ip( self, string ):
 		'''Parse an IP address'''
