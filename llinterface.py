@@ -1083,6 +1083,10 @@ class Connection:
 		
 	def responseToPartyInvite(self, responseToInvite):
 		self.srv.sendall("\xff\x00%s\x00\x00\x00" % (struct.pack("<LB", Packet.whoInvites, responseToInvite)))
+		
+	def sendPartyMessage(self, message):
+		messageLength = len(message)+4
+		self.srv.sendall( "\x08\x01%s%s" % (struct.pack("<H", messageLength ), message))	
 	
 
 if __name__ == '__main__':
@@ -1138,6 +1142,7 @@ if __name__ == '__main__':
 		debug( "29. PARTY: Invite to Party" )
 		debug( "30. PARTY: Leave Party" )
 		debug( "31. PARTY: Response to a Party Invitation" )
+		debug( "32. PARTY: Send a party message" )
 		
 		
 		debug( 67 * "-" )
@@ -1272,6 +1277,9 @@ if __name__ == '__main__':
 			responseToInvite = int(raw_input("Type 1 for accept, 0 for refuse: "))
 			c.responseToPartyInvite(responseToInvite)
 	
+		elif command == "32":
+			partyMessage = raw_input("Type your message: ")
+			c.sendPartyMessage(partyMessage)
 	
 	'''
 	for i, j in zip( range( 50, 90 ), range( 50, 90 ) ): 
