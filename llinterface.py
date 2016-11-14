@@ -711,7 +711,25 @@ class Packet:
 		
 			
 		elif self.type == 'SMSG_PLAYER_INVENTORY':
-			debug( "\n\n\nINVENTORY DETECTED! \n\n\n" )
+			debug( "\n\nINVENTORY DETECTED: \n" )
+			inventory = self.data[4:]
+			
+			while inventory:
+				invIndex = struct.unpack ("<H", inventory[0:2])[0]
+				invID = struct.unpack ("<H", inventory[2:4])[0]
+				invAmount = struct.unpack ("<H", inventory[6:8])[0]
+				debug( invIndex, invID, invAmount)
+				inventory = inventory [18:]
+			
+		elif self.type == 'SMSG_PLAYER_EQUIPMENT':
+			debug( "\n\nEQUIPMENT DETECTED: \n" )
+			equipment = self.data[4:]
+			
+			while equipment:
+				eqIndex = struct.unpack ("<H", equipment[0:2])[0]
+				eqID = struct.unpack ("<H", equipment[2:4])[0]
+				debug( eqIndex, eqID, )
+				equipment = equipment [20:]
 			
 			
 		elif self.type == 'SMSG_WALK_RESPONSE': # CLIENT JOZEK CAN'T DETECT PACKAGE WHEN IGOR MOVES
