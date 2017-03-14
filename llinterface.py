@@ -414,6 +414,9 @@ class Packet:
 	
 	critterMovements = {}
 	
+	playerInventory = {}
+	playerEquipment = {}
+	
 	whoInvites = None
 	
 	
@@ -747,6 +750,12 @@ class Packet:
 				invID = struct.unpack ("<H", inventory[2:4])[0]
 				invAmount = struct.unpack ("<H", inventory[6:8])[0]
 				debug( invIndex, invID, invAmount)
+				
+				try:
+					Packet.playerInventory[invIndex].append((invID,invAmount))
+				except KeyError: 	
+					Packet.playerInventory[invIndex] = [(invID,invAmount)]
+				
 				inventory = inventory [18:]
 			
 		elif self.type == 'SMSG_PLAYER_EQUIPMENT':
@@ -757,6 +766,12 @@ class Packet:
 				eqIndex = struct.unpack ("<H", equipment[0:2])[0]
 				eqID = struct.unpack ("<H", equipment[2:4])[0]
 				debug( eqIndex, eqID, )
+				
+				try:
+					Packet.playerEquipment[eqIndex].append(eqID)
+				except KeyError: 	
+					Packet.playerEquipment[eqIndex] = eqID
+					
 				equipment = equipment [20:]
 			
 			
@@ -813,10 +828,10 @@ class Packet:
 		# elif self.type == 'SMSG_PLAYER_SKILLS':
 			# debug (" \n\n\nSTATUS CHANGE DETECTED \n\n\n ")
 		
-		elif self.type == 'SMSG_BEING_CHANGE_LOOKS2':
-			debug ("\n\nPlayer ID DETECTED: ")
+		elif self.type == 'SMSG_BEING_CHANGE_LOOKS2': # WORKS, extracting the player ID
 			self.myID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
-			debug (self.myID)
+			# debug ("\n\nPlayer ID DETECTED: ")
+			# debug (self.myID)
 			
 					
 	def _parse_ip( self, string ):
@@ -1203,7 +1218,8 @@ if __name__ == '__main__':
 		debug( "30. PARTY: Leave Party" )
 		debug( "31. PARTY: Response to a Party Invitation" )
 		debug( "32. PARTY: Send a party message" )
-		
+		debug( "33. Show (*initial*) Player Inventory" )
+		debug( "34. Show (*initial*) Player Equipment" )
 		
 		debug( 67 * "-" )
 		
@@ -1340,6 +1356,12 @@ if __name__ == '__main__':
 		elif command == "32":
 			partyMessage = raw_input("Type your message: ")
 			c.sendPartyMessage(partyMessage)
+			
+		elif command == "33":
+			debug (Packet.playerInventory)
+			
+		elif command == "34":
+			debug (Packet.playerEquipment)
 	
 	'''
 	for i, j in zip( range( 50, 90 ), range( 50, 90 ) ): 
