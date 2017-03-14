@@ -564,6 +564,8 @@ class Packet:
 				buff = buff[ 2: ]
 				self.charlist.append( c )
 				self.characters[ c.name ] = c
+				
+				# debug ("CHARACTER ID: %d" %c.char_id ) # NOT THE SAME ID as in-game ID ?
 		
 		elif self.type == 'SMSG_CHAR_MAP_INFO':
 			self.charid = struct.unpack( "<L", self.data[ 2:6 ] )[ 0 ]
@@ -688,10 +690,14 @@ class Packet:
 			
 			# debug("Critter %d moves to %d %d" %(Packet.critterMovesTo_ID, Packet.critterMovesTo_x, Packet.critterMovesTo_y)) # WORKS
 			
+			
 			try:				# WORKS, append the new movement to the existing critter ID
 				Packet.critterMovements[self.CritterID].append((x,y))
 			except KeyError: 	# WORKS, add the new critter ID and the observed movement
 				Packet.critterMovements[self.CritterID] = [(x,y)]
+
+			# NOTE: if we put self.critterMovements instead of class variable Packet.critterMovements, 
+			# the dictionary is reset by every received package
 			
 			# print Packet.critterMovements
 			
@@ -702,8 +708,7 @@ class Packet:
 			# WORKS
 			
 			self.PlayerID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
-			# debug( "Player %s moved to:" %self.PlayerID ) # WORKS
-			
+						
 			x_1 = struct.unpack ("<B", self.data[52])[0]
 			x_2 = struct.unpack ("<B", self.data[53])[0]
 			x_1 = bin(x_1).replace("0b", "").rjust(8,"0")
@@ -724,8 +729,14 @@ class Packet:
 			#debug( Packet.playerMovesTo_ID )
 			Packet.playerMovesTo_x = x
 			Packet.playerMovesTo_y = y
+			
+			# debug( "Player %s moved to:" %self.PlayerID ) # WORKS
 			# debug(Packet.playerMovesTo_x, Packet.playerMovesTo_y) # WORKS
 		
+		
+		# elif self.type == 'SMSG_BEING_NAME_RESPONSE':
+			# debug (" \n\n\nNAME DETECTED \n\n\n ")
+	
 			
 		elif self.type == 'SMSG_PLAYER_INVENTORY':
 			debug( "\n\nINVENTORY DETECTED: \n" )
@@ -765,7 +776,7 @@ class Packet:
 			y = y_1[6:] + y_2
 			y = int(y, 2)
 
-			# debug( "Someone moved to %d, %d" %(x,y) )
+			# debug( "I moved to %d, %d" %(x,y) )
 			
 			
 		elif self.type == 'SMSG_NPC_MESSAGE' or self.type == 'SMSG_NPC_CHOICE': 
@@ -792,6 +803,20 @@ class Packet:
 			partyMesageTxt = self.data[ 8: ]
 			debug( "\nParty chat message received from player: %d" % partyMessageSender)
 			debug( "\nParty chat message: %s" % partyMesageTxt)
+			
+		# elif self.type == 'SMSG_PLAYER_STATUS_CHANGE':
+			# debug (" \n\n\nSTATUS CHANGE DETECTED \n\n\n ")
+		
+		# elif self.type == 'SMSG_PLAYER_UPDATE_2':
+			# debug (" \n\n\nSTATUS CHANGE DETECTED \n\n\n ")
+			
+		# elif self.type == 'SMSG_PLAYER_SKILLS':
+			# debug (" \n\n\nSTATUS CHANGE DETECTED \n\n\n ")
+		
+		elif self.type == 'SMSG_BEING_CHANGE_LOOKS2':
+			debug ("\n\nPlayer ID DETECTED: ")
+			self.myID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
+			debug (self.myID)
 			
 					
 	def _parse_ip( self, string ):
