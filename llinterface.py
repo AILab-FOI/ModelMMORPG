@@ -9,7 +9,7 @@ import sys
 import re
 import select
 import os
-
+	
 
 DEBUG = True
 CHARACTER = None
@@ -412,6 +412,8 @@ class Packet:
 	critterMovesTo_x = None
 	critterMovesTo_y = None
 	
+	critterMovements = {}
+	
 	whoInvites = None
 	
 	
@@ -450,6 +452,8 @@ class Packet:
 	def interpret( self ):
 		'''Parse the packet and assign adequate attributes to the object depending 
 		on the packet type'''
+		
+		
 		
 		if self.type == 'SMSG_LOGIN_DATA':
 			'''
@@ -655,7 +659,9 @@ class Packet:
 		elif self.type == 'SMSG_BEING_MOVE':
 			
 			self.CritterID =  struct.unpack( "<L", self.data[ 2:6 ] )[0] #WORKS; gets being ID
-			#debug( self.CritterID )
+			
+			# debug( self.CritterID )
+			# debug ( type(self.CritterID) )
 			
 			# coordinates work, but values represent FINAL destination of the monster, not step-by-step.
 			x_1 = struct.unpack ("<B", self.data[52])[0]
@@ -679,14 +685,24 @@ class Packet:
 			Packet.critterMovesTo_ID = self.CritterID
 			Packet.critterMovesTo_x = x
 			Packet.critterMovesTo_y = y
-		
+			
+			# debug("Critter %d moves to %d %d" %(Packet.critterMovesTo_ID, Packet.critterMovesTo_x, Packet.critterMovesTo_y)) # WORKS
+			
+			try:				# WORKS, append the new movement to the existing critter ID
+				Packet.critterMovements[self.CritterID].append((x,y))
+			except KeyError: 	# WORKS, add the new critter ID and the observed movement
+				Packet.critterMovements[self.CritterID] = [(x,y)]
+			
+			# print Packet.critterMovements
+			
+			
 		
 		elif self.type == 'SMSG_PLAYER_MOVE':
 			
 			# WORKS
 			
 			self.PlayerID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
-			debug( "Player %s moved" %self.PlayerID )
+			# debug( "Player %s moved to:" %self.PlayerID ) # WORKS
 			
 			x_1 = struct.unpack ("<B", self.data[52])[0]
 			x_2 = struct.unpack ("<B", self.data[53])[0]
@@ -708,6 +724,7 @@ class Packet:
 			#debug( Packet.playerMovesTo_ID )
 			Packet.playerMovesTo_x = x
 			Packet.playerMovesTo_y = y
+			# debug(Packet.playerMovesTo_x, Packet.playerMovesTo_y) # WORKS
 		
 			
 		elif self.type == 'SMSG_PLAYER_INVENTORY':
@@ -748,7 +765,7 @@ class Packet:
 			y = y_1[6:] + y_2
 			y = int(y, 2)
 
-			debug( "Someone moved to %d, %d" %(x,y) )
+			# debug( "Someone moved to %d, %d" %(x,y) )
 			
 			
 		elif self.type == 'SMSG_NPC_MESSAGE' or self.type == 'SMSG_NPC_CHOICE': 
