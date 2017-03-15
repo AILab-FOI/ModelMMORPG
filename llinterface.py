@@ -615,11 +615,19 @@ class Packet:
 			debug( Packet.droppedItemDict )
 	
 		
-		#elif self.type == 'SMSG_PLAYER_INVENTORY_ADD': # NE REGISTRIRA POJAVU OVOG PAKETA
+		elif self.type == 'SMSG_PLAYER_INVENTORY_ADD': # WORKS
 			
-			#debug( "\n -- added stuff to inventory!" )
-			#droppedItemID = struct.unpack ("<L", self.data[-4:])
-			#debug( droppedItemID )
+			debug( "\n -- added stuff to inventory!" )
+			droppedItemAmount = struct.unpack ("<H", self.data[4:6])
+			droppedItemID = struct.unpack ("<H", self.data[6:8])
+			droppedItemINDEX = struct.unpack ("<L", self.data[-4:]) # WRONG INDEX READINGS; last 4 bytes; to-do!
+			
+			#droppedItemINDEX2 = struct.unpack ("<B", self.data[-2])
+			#droppedItemINDEX3 = struct.unpack ("<B", self.data[-3])
+			#droppedItemINDEX4 = struct.unpack ("<B", self.data[-4])
+			#droppedItemINDEX5 = struct.unpack ("<B", self.data[-5])
+			
+			debug( droppedItemINDEX, droppedItemID, droppedItemAmount )
 		
 
 		elif self.type == 'SMSG_ITEM_REMOVE':
@@ -1255,8 +1263,9 @@ if __name__ == '__main__':
 		elif command == "6": 
 			c.stop_attack()
 			
-		elif command == "7": 	
-			c.itemPickUp()
+		elif command == "7":
+			itemIndex = int(raw_input("Enter item index: "))
+			c.itemPickUp(itemIndex)
 		
 		elif command == "8": 
 			
