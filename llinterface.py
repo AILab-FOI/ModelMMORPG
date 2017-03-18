@@ -387,7 +387,11 @@ class PacketBuffer( threading.Thread ):
 		ret.seen = True
 		return ret
 		
-		
+class Item:
+  def __init__( self, itemID, itemAmount ):
+    self.itemID = itemID
+    self.itemAmount = itemAmount
+    
 		
 class Packet:
 	
@@ -416,6 +420,8 @@ class Packet:
 	
 	playerInventory = {}
 	playerEquipment = {}
+	
+	playerSlots = {}
 	
 	whoInvites = None
 	
@@ -618,17 +624,40 @@ class Packet:
 		elif self.type == 'SMSG_PLAYER_INVENTORY_ADD': # WORKS
 			
 			debug( "\n -- added stuff to inventory!" )
-			droppedItemAmount = struct.unpack ("<H", self.data[4:6])
-			droppedItemID = struct.unpack ("<H", self.data[6:8])
-			droppedItemINDEX = struct.unpack ("<L", self.data[-4:]) # WRONG INDEX READINGS; last 4 bytes; to-do!
+			ItemIndex = struct.unpack ("<H", self.data[2:4])[0]
+			ItemAmount = struct.unpack ("<H", self.data[4:6])[0]
+			ItemID = struct.unpack ("<H", self.data[6:8])[0]
 			
+			
+			#droppedItemINDEX2 = struct.unpack ("<B", self.data[63])
 			#droppedItemINDEX2 = struct.unpack ("<B", self.data[-2])
 			#droppedItemINDEX3 = struct.unpack ("<B", self.data[-3])
 			#droppedItemINDEX4 = struct.unpack ("<B", self.data[-4])
 			#droppedItemINDEX5 = struct.unpack ("<B", self.data[-5])
 			
-			debug( droppedItemINDEX, droppedItemID, droppedItemAmount )
+			debug(ItemIndex, ItemAmount, ItemID)
+			
+			try:
+				Packet.playerSlots[ItemIndex].itemAmount = Packet.playerSlots[ItemIndex].itemAmount + ItemAmount
+			except KeyError: 
+				Packet.playerSlots[ItemIndex] = Item(ItemID, ItemAmount)
+			
+			debug ("New item received:")
+			debug (Packet.playerSlots[ItemIndex].itemID)
+			debug (Packet.playerSlots[ItemIndex].itemAmount)
+			
+			
+			
+		# elif self.type == 'CMSG_ITEM_PICKUP': HERE WE CAN GET ITEM INDEX FOR LOCAL INVENTORY 
+			# ...
 		
+		elif self.type == 'SMSG_PLAYER_INVENTORY_REMOVE':
+			ItemIndex = struct.unpack ("<H", self.data[2:4])[0]
+			ItemAmount = struct.unpack ("<H", self.data[4:6])[0]
+			
+			debug(ItemIndex, ItemAmount)
+			
+			
 
 		elif self.type == 'SMSG_ITEM_REMOVE':
 			debug( "\n -- added stuff to inventory and removed from map!" )
@@ -759,10 +788,14 @@ class Packet:
 				invAmount = struct.unpack ("<H", inventory[6:8])[0]
 				debug( invIndex, invID, invAmount)
 				
+				Packet.playerSlots[invIndex] = Item(invID,invAmount)
+				
 				try:
 					Packet.playerInventory[invIndex].append((invID,invAmount))
+					#~ Packet.playerSlots[invIndex].append((invID,invAmount))
 				except KeyError: 	
 					Packet.playerInventory[invIndex] = [(invID,invAmount)]
+					#~ Packet.playerSlots[invIndex] = [(invID,invAmount)]
 				
 				inventory = inventory [18:]
 			
@@ -775,10 +808,14 @@ class Packet:
 				eqID = struct.unpack ("<H", equipment[2:4])[0]
 				debug( eqIndex, eqID, )
 				
+				Packet.playerSlots[eqIndex] = Item(eqID,1)
+				
 				try:
 					Packet.playerEquipment[eqIndex].append(eqID)
+					#~ Packet.playerSlots[eqIndex].append((eqID,1))
 				except KeyError: 	
 					Packet.playerEquipment[eqIndex] = eqID
+					#~ Packet.playerSlots[eqIndex] = [(eqID,1)]
 					
 				equipment = equipment [20:]
 			
@@ -1228,6 +1265,7 @@ if __name__ == '__main__':
 		debug( "32. PARTY: Send a party message" )
 		debug( "33. Show (*initial*) Player Inventory" )
 		debug( "34. Show (*initial*) Player Equipment" )
+		debug( "35. Show (*initial*) Player Slots" )
 		
 		debug( 67 * "-" )
 		
@@ -1371,6 +1409,11 @@ if __name__ == '__main__':
 			
 		elif command == "34":
 			debug (Packet.playerEquipment)
+			
+		elif command == "35":
+			debug ("\n\nSlot NO, Item ID, Item Amount:")
+			for i in Packet.playerSlots:
+				debug (i, Packet.playerSlots[i].itemID, Packet.playerSlots[i].itemAmount)
 	
 	'''
 	for i, j in zip( range( 50, 90 ), range( 50, 90 ) ): 
