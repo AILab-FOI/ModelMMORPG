@@ -674,10 +674,23 @@ class Packet:
 			if re.match (".*[a-z]+\:\ [0-9]+\-[0-9]\ \([0-9]+\,[0-9]+", self.data) is not None:
 				debug( "\n\nIncoming coordinates found!" )
 				Packet.chatCoordinates = self.data
+				
+				mapID = list(Packet.chatCoordinates) 
+				
 				Packet.chatCoordinates = list(Packet.chatCoordinates) 
 				#debug( Packet.chatCoordinates )
 				pos = Packet.chatCoordinates.index("(")
-				del Packet.chatCoordinates[:pos+1]
+				
+				#~ mapID = Packet.chatCoordinates
+				pos2 = mapID.index(":")
+				del mapID[:pos2+2]
+				pos2 = mapID.index("(")
+				del mapID[pos2-1:]
+				mapID = "".join(mapID)
+				
+				debug ("MAP ID: %s" %mapID)
+				
+				del Packet.chatCoordinates[:pos+1] 
 				#debug( "\n\n" )
 				#debug( Packet.chatCoordinates )
 				pos = Packet.chatCoordinates.index(")")
@@ -686,7 +699,6 @@ class Packet:
 				#debug( Packet.chatCoordinates )
 				pos = Packet.chatCoordinates.index(",")
 				Packet.chatCoordinates_x = "".join(Packet.chatCoordinates[:pos])
-				debug( "\n\n"   )
 				debug( "Coordinates X: %s" %Packet.chatCoordinates_x )
 				Packet.chatCoordinates_y = "".join(Packet.chatCoordinates[pos+1:])
 				debug( "Coordinates Y: %s" %Packet.chatCoordinates_y )
@@ -1081,7 +1093,7 @@ class Connection:
 	def createParty (self, partyName): # WORKS
 		self.srv.sendall( "\xF9\0%s" % partyName.ljust(24, '\0'))
 		
-	def whereJozek (self): # GM chat messages, don't work although the packets sent by Python are identical 
+	def whereJozek (self): # GM chat messages
 		self.srv.sendall( "\x8c\0\x13\x00\x4a\x6f\x7a\x65\x6b\x20\x3a\x20\x40\x77\x68\x65\x72\x65\x00" )
 		#self.srv.sendall( "\x8c\0%s" % (struct.pack("<H", "igor : @where jozek"))) 
 		
