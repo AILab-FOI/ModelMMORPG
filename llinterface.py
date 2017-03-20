@@ -647,20 +647,39 @@ class Packet:
 			debug (Packet.playerSlots[ItemIndex].itemAmount)
 			
 			
-			
-		# elif self.type == 'CMSG_ITEM_PICKUP': HERE WE CAN GET ITEM INDEX FOR LOCAL INVENTORY 
-			# ...
-		
+					
 		elif self.type == 'SMSG_PLAYER_INVENTORY_REMOVE':
-			ItemIndex = struct.unpack ("<H", self.data[2:4])[0]
-			ItemAmount = struct.unpack ("<H", self.data[4:6])[0]
-			
-			debug(ItemIndex, ItemAmount)
 			
 			
+			for i in Packet.playerSlots:
+				debug (i, Packet.playerSlots[i].itemID, Packet.playerSlots[i].itemAmount)
+			
+			itemIndex = struct.unpack ("<H", self.data[2:4])[0]
+			itemAmount = struct.unpack ("<H", self.data[4:6])[0]
+			
+			debug ("\nitem removed:\n")
+			debug(itemIndex, itemAmount)
+			
+			Packet.playerSlots[itemIndex].itemAmount = Packet.playerSlots[itemIndex].itemAmount - itemAmount
+			
+			# Now check if the item is completely gone from the inventory; delete from dictionary if so:
+			
+			if Packet.playerSlots[itemIndex].itemAmount == 0:
+				del Packet.playerSlots[itemIndex]
+				
+				# When the item is completely gone, the item indexes (slot numbers) are shifting:
+				Packet.playerSlots = dict(zip( range( 2, len( Packet.playerSlots.values() )+2 ), Packet.playerSlots.values() ) )
+				
+				debug ("Item completely removed from the inventory")
+				for i in Packet.playerSlots:
+					debug (i, Packet.playerSlots[i].itemID, Packet.playerSlots[i].itemAmount)
+			else:
+				debug ("Item subtracted from the inventory")
+				for i in Packet.playerSlots:
+					debug (i, Packet.playerSlots[i].itemID, Packet.playerSlots[i].itemAmount)
 
 		elif self.type == 'SMSG_ITEM_REMOVE':
-			debug( "\n -- added stuff to inventory and removed from map!" )
+			debug( "\n -- item removed from map!" )
 			droppedItemID = struct.unpack ("<L", self.data[-4:])[0]
 			debug( "Removed item ID: %d" %droppedItemID )
 			del Packet.droppedItemDict[droppedItemID]
@@ -1218,8 +1237,12 @@ class Connection:
 		
 	def sendPartyMessage(self, message):
 		messageLength = len(message)+4
-		self.srv.sendall( "\x08\x01%s%s" % (struct.pack("<H", messageLength ), message))	
-	
+		self.srv.sendall( "\x08\x01%s%s" % (struct.pack("<H", messageLength ), message))
+		
+	def dropItem(self, itemIndex, ItemQ):
+		# packet example: a2:00:07:00:01:00
+		self.srv.sendall( "\xa2\x00%s" % (struct.pack("<HH", itemIndex, ItemQ)))
+
 
 if __name__ == '__main__':
 	from testconf import * 
@@ -1278,6 +1301,7 @@ if __name__ == '__main__':
 		debug( "33. Show (*initial*) Player Inventory" )
 		debug( "34. Show (*initial*) Player Equipment" )
 		debug( "35. Show (*initial*) Player Slots" )
+		debug( "36. Drop item" )
 		
 		debug( 67 * "-" )
 		
@@ -1427,6 +1451,12 @@ if __name__ == '__main__':
 			for i in Packet.playerSlots:
 				debug (i, Packet.playerSlots[i].itemID, Packet.playerSlots[i].itemAmount)
 	
+		elif command == "36":
+			itemIndex = int(raw_input("Please enter item Index: "))
+			itemQ = int(raw_input("Please enter item quantity: "))
+			c.dropItem(itemIndex, itemQ)
+			
+			
 	'''
 	for i, j in zip( range( 50, 90 ), range( 50, 90 ) ): 
 		c.setDestination( i, j, 1 )
