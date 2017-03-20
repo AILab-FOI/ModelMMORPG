@@ -15,9 +15,21 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		''' Dummy inventory until lli is done '''
 		return { 'bug leg':2, 'cotton shirt':1, 'hitchhikers towel':1 }
 
+	def getVisibleItems( self ):
+		''' Dummy visible items until lli is done '''
+		return { 'maggot slime':( '085-1', 125, 142 ), 'bug leg':( '085-1', 122, 132 ) }
+
 	def getVisibleMobs( self ):
 		''' Dummy visible mobs until lli is done '''
 		return { 'maggot':( '085-1', 125, 142 ), 'black scorpion':( '085-1', 122, 132 ) }
+
+	def getVisibleNPCs( self ):
+		''' Dummy visible NPCs until lli is done '''
+		return { 'Sorfina':( '085-1', 125, 142 ), 'Tanisha':( '085-1', 122, 132 ) }
+
+	def getVisiblePlayers( self ):
+		''' Dummy visible players until lli is done '''
+		return { 'Bogdan':( '085-1', 125, 142 ), 'Igor':( '085-1', 122, 132 ) }
 
 	def getMyLocation( self ):
 		''' Dummy location until lli is done '''
@@ -37,8 +49,9 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			- any changes in organization (e.g. party membership)
 			...? 
 		    and update the knowledge base accordingly'''
-		self.say( 'Updating my stats ...' )
+		
 		if self.character_list:
+			self.say( 'Updating my stats ...' )
 			char = self.character_list[ self.character ]
 			self.avatar_name = char.name
 			for token, value in char.__dict__.items():
@@ -50,6 +63,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( delete_predicate )
 				self.kb.ask( update_predicate )
+
 			self.say( 'Updating my inventory ...' )
 			inv = self.getInventory()
 			for itemid, amount in inv.items():
@@ -58,6 +72,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( delete_predicate )
 				self.kb.ask( update_predicate )
+
 			self.say( 'Updating visible mobs ...' )
 			mobs = self.getVisibleMobs()
 			# First delete all known locations
@@ -68,6 +83,31 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( mob, mapname, x, y )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( update_predicate )
+
+			self.say( 'Updating visible NPCs ...' ) # NOTE: NPCs should be stored permanentnly with an additional predicate
+			npcs = self.getVisibleNPCs()
+			for npc, loc in npcs.items():
+				mapname, x, y = loc
+				update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( npc, mapname, x, y )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( update_predicate )
+
+			self.say( 'Updating visible players ...' )
+			players = self.getVisiblePlayers()
+			for p, loc in players.items():
+				mapname, x, y = loc
+				update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( p, mapname, x, y )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( update_predicate )
+
+			self.say( 'Updating visible items ...' )
+			itms = self.getVisibleItems()
+			for item, loc in itms.items():
+				mapname, x, y = loc
+				update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( item, mapname, x, y )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( update_predicate )
+
 			self.say( 'Updating my location ...' )
 			mapname, x, y = self.getMyLocation()
 			# Do not need to delete my location since all locations were deleted earlier
