@@ -8,7 +8,12 @@ import time
 
 class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def say( self, msg ):
+		''' Say something (e.g. print to console for debug purposes) '''
 		print '%s: %s' % ( self.name.split( '@' )[ 0 ], str( msg ) )
+
+	def getInventory( self ):
+		''' Dummy inventory until lli is done '''
+		return { 'bug leg':2, 'cotton shirt':1, 'hitchhikers towel':1 }
 
 	def updateKB( self ):
 		''' Update the knowledgebase based on current observation
@@ -23,16 +28,27 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			- any changes in organization (e.g. party membership)
 			...? 
 		    and update the knowledge base accordingly'''
+		self.say( 'Updating my stats ...' )
 		if self.character_list:
 			char = self.character_list[ self.character ]
 			self.avatar_name = char.name
 			for token, value in char.__dict__.items():
+				delete_predicate = "retract( ownership( '%s', '%s', _ ) )" % ( self.avatar_name, token )
 				if type( value ) == int:
 					update_predicate = "assert( ownership( '%s', '%s', %d ) )" % ( self.avatar_name, token, value )
 				else:
 					update_predicate = "assert( ownership( '%s', '%s', '%s' ) )" % ( self.avatar_name, token, str( value ) )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
-				# TODO: add to knowledge base
+				self.kb.ask( delete_predicate )
+				self.kb.ask( update_predicate )
+			self.say( 'Updating my inventory ...' )
+			inv = self.getInventory()
+			for itemid, amount in inv.items():
+				delete_predicate = "retract( ownership( '%s', '%s', _ ) )" % ( self.avatar_name, itemid )
+				update_predicate = "assert( ownership( '%s', '%s', %d ) )" % ( self.avatar_name, itemid, amount )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( delete_predicate )
+				self.kb.ask( update_predicate )
 
 	def updateObjectives( self ):
 		''' List all possible objectives (e.g. unsolved quests) '''
