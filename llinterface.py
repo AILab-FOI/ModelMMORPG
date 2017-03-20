@@ -657,8 +657,8 @@ class Packet:
 			itemIndex = struct.unpack ("<H", self.data[2:4])[0]
 			itemAmount = struct.unpack ("<H", self.data[4:6])[0]
 			
-			debug ("\nitem removed:\n")
-			debug(itemIndex, itemAmount)
+			# debug ("\nitem removed:\n")
+			# debug(itemIndex, itemAmount)
 			
 			Packet.playerSlots[itemIndex].itemAmount = Packet.playerSlots[itemIndex].itemAmount - itemAmount
 			
@@ -670,11 +670,11 @@ class Packet:
 				# When the item is completely gone, the item indexes (slot numbers) are shifting:
 				Packet.playerSlots = dict(zip( range( 2, len( Packet.playerSlots.values() )+2 ), Packet.playerSlots.values() ) )
 				
-				debug ("Item completely removed from the inventory")
+				debug ("\nItem completely removed from the inventory:")
 				for i in Packet.playerSlots:
 					debug (i, Packet.playerSlots[i].itemID, Packet.playerSlots[i].itemAmount)
 			else:
-				debug ("Item subtracted from the inventory")
+				debug ("\nItem subtracted from the inventory:")
 				for i in Packet.playerSlots:
 					debug (i, Packet.playerSlots[i].itemID, Packet.playerSlots[i].itemAmount)
 
