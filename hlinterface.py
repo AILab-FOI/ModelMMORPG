@@ -15,9 +15,18 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		''' Dummy inventory until lli is done '''
 		return { 'bug leg':2, 'cotton shirt':1, 'hitchhikers towel':1 }
 
+	def getVisibleMobs( self ):
+		''' Dummy visible mobs until lli is done '''
+		return { 'maggot':( '085-1', 125, 142 ), 'black scorpion':( '085-1', 122, 132 ) }
+
+	def getMyLocation( self ):
+		''' Dummy location until lli is done '''
+		return ( '085-1', 119, 132 )
+
 	def updateKB( self ):
 		''' Update the knowledgebase based on current observation
 		    of the environment in TMW, e.g.:
+			- list own location
 			- list the inventory
 			- list current visible items laying around (include location and type)
 			- list visible mobs/NPCs/other players (include location and name)
@@ -49,6 +58,22 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( delete_predicate )
 				self.kb.ask( update_predicate )
+			self.say( 'Updating visible mobs ...' )
+			mobs = self.getVisibleMobs()
+			# First delete all known locations
+			delete_predicate = "retract( location( _, _, _, _ ) )"
+			self.kb.ask( delete_predicate )
+			for mob, loc in mobs.items():
+				mapname, x, y = loc
+				update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( mob, mapname, x, y )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( update_predicate )
+			self.say( 'Updating my location ...' )
+			mapname, x, y = self.getMyLocation()
+			# Do not need to delete my location since all locations were deleted earlier
+			update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( self.avatar_name, mapname, x, y )
+			self.say( 'Updating knowledge base with: ' + update_predicate )
+			self.kb.ask( update_predicate )
 
 	def updateObjectives( self ):
 		''' List all possible objectives (e.g. unsolved quests) '''
