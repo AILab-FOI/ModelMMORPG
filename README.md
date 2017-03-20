@@ -23,3 +23,32 @@ Our research is therefore aimed towards enriching the organizational design meth
 The quest for the dragon egg is a quest specially designed for the Mana World MMORPG that shall allow us to study the organizational behaviour of players on-line.
 
 The provided repository deals with the implementation of an end-point plug-in for a large-scale multi-agent system's modelling tool developed by ModelMMORPG.
+
+
+## Testing
+
+In order to test the current implementation of the agent you need to have an active account on a ManaWorld server. *Beware, most active servers prohibit the use of automated bots and players!* Thus, firstly make sure the server you are using allows usage of bots or setup an own dedicated server for yourself. After cloning the repository add a file testconf.py with the following data:
+
+```
+SERVER = 'your server or ip' 
+PORT = 6901 # make sure this is right
+USERNAME = 'your username'
+PASSWORD = 'your password'
+CHARACTER = 0 # the index of your registered character - 1
+```
+
+To test the low-level interface run
+
+```
+./llinterface.py
+```
+
+The program will run the low-level interface and provide you with an options menu. In order to see what the bot is actually doing when using the various actions, use an additional account and the ManaPlus client to connect to the server with another character.
+
+To test the high level interface run
+
+```
+./hlinterface.py
+```
+
+The interface will start and try to solve quests by it self. This part is highly experimental and not fully functional.

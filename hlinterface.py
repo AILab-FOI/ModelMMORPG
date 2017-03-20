@@ -14,7 +14,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		''' Update the knowledgebase based on current observation
 		    of the environment in TMW, e.g.:
 			- list the inventory
-			- list current visible items lying around (include location and type)
+			- list current visible items laying around (include location and type)
 			- list visible mobs/NPCs/other players (include location and name)
 			- list any changes in quest acomplishment (e.g. quest solved)
 			- list any ongoing or done conversation with NPCs that are possibly
@@ -23,7 +23,16 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			- any changes in organization (e.g. party membership)
 			...? 
 		    and update the knowledge base accordingly'''
-		pass
+		if self.character_list:
+			char = self.character_list[ self.character ]
+			self.avatar_name = char.name
+			for token, value in char.__dict__.items():
+				if type( value ) == int:
+					update_predicate = "assert( ownership( '%s', '%s', %d ) )" % ( self.avatar_name, token, value )
+				else:
+					update_predicate = "assert( ownership( '%s', '%s', '%s' ) )" % ( self.avatar_name, token, str( value ) )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				# TODO: add to knowledge base
 
 	def updateObjectives( self ):
 		''' List all possible objectives (e.g. unsolved quests) '''
