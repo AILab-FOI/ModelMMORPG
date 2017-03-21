@@ -35,6 +35,19 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		''' Dummy location until lli is done '''
 		return ( '085-1', 119, 132 )
 
+	def getNewNPCMessages( self ):
+		''' Dummy NPC messages until lli is done '''
+		return { 'Sorfina': [ 'Hello!', 'Put on a shirt!' ], 'Tanisha': [ 'Can you take care of the maggots?' ] }
+
+	def interpretNPCMessage( self, npc, message ):
+		if npc == 'Sorfina':
+			if message == 'Put on a shirt!':
+				return "waiting_quest( '" + npc + "', '%s', tutorial)"
+		elif npc == 'Tanisha':
+			if message == 'Can you take care of the maggots?':
+				return "waiting_quest( '" + npc + "', '%s', maggots)"
+		return False
+
 	def updateKB( self ):
 		''' Update the knowledgebase based on current observation
 		    of the environment in TMW, e.g.:
@@ -115,9 +128,29 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'Updating knowledge base with: ' + update_predicate )
 			self.kb.ask( update_predicate )
 
+			self.say( 'Updating NPC conversations ...' ) # not deleting old messages
+			npc_messages = self.getNewNPCMessages()
+			for npc, messages in npc_messages.items():
+				for message in messages:
+					update_predicate = "assert( npc_message( '%s', '%s', '%s' ) )" % ( self.avatar_name, npc, message )
+					self.kb.ask( update_predicate )
+					self.say( 'Updating knowledge base with: ' + update_predicate )
+					update = self.interpretNPCMessage( npc, message )
+					if update:
+						if not self.kb.ask( update % self.avatar_name ): # if I haven't got this quest already
+							update_predicate = 'assert( %s )' % update % self.avatar_name
+							self.kb.ask( update_predicate )
+							self.say( 'Updating knowledge base with: ' + update_predicate )
+
 	def updateObjectives( self ):
 		''' List all possible objectives (e.g. unsolved quests) '''
-		self.quests = self.askBelieve( 'waiting_quest( NPC, a, Name ).' )
+		try:
+			self.say( 'My avatar name is ' + self.avatar_name )
+		except:
+			self.say( "My avatar hasn't loaded yet ..." )
+			time.sleep( 1 )
+			return None
+		self.quests = self.askBelieve( "waiting_quest( NPC, '%s', Name )." % self.avatar_name )
 		time.sleep( 1 )
 		if self.quests:
 			self.say( 'My current quests are:' )
@@ -154,7 +187,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		def _process( self ):
 			self.myAgent.updateKB()
 			obj = self.myAgent.updateObjectives()
-			if obj[ 0 ][ 'Name' ] != 'random_walk':
+			if obj and obj[ 0 ][ 'Name' ] != 'random_walk':
 				next = self.myAgent.selectObjective( obj )
 			else:
 				next = 'random_walk'

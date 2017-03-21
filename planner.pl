@@ -61,6 +61,7 @@
 :- dynamic waiting_quest/3.
 :- dynamic killed_giant_maggots/2.
 :- dynamic quest_no/4.
+:- dynamic npc_message/3.
 
 % %%%%%%%%%%%%%%%% %
 %  STANJE SUSTAVA  %
@@ -68,6 +69,8 @@
 
 % On the world are the following:
 % ------------------------------
+
+npc_message( a, tanisha, hello ).
 
 % Agents:
 
@@ -662,6 +665,7 @@ dropped(boots,red_slime,2.5).
 
 % Quest-ovi koje su od NPC-a dobili pojedini agenti ali ih jos nisu krenuli rjesavati (ovi podaci dolaze izvana iz igre i zapisuju se ovdje):
 
+/*
 waiting_quest(npc,a,tutorial).
 waiting_quest(npc,a,bernard).
 waiting_quest(npc,a,mikhail).
@@ -672,10 +676,12 @@ waiting_quest(npc,a,lieutenant_dausen).
 waiting_quest(npc,a,emote_skill).
 waiting_quest(npc,a,miners_quest).
 waiting_quest(npc,a,letter_quest).
+*/
 
 % Significance of quest for agent:
 
 quest_sign(a,tutorial,100).
+quest_sign(a,maggots,95).
 quest_sign(a,sandra,90).
 quest_sign(a,lieutenant_dausen,60).
 quest_sign(a,emote_skill,40).
