@@ -40,6 +40,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		return { 'Sorfina': [ 'Hello!', 'Put on a shirt!' ], 'Tanisha': [ 'Can you take care of the maggots?' ] }
 
 	def interpretNPCMessage( self, npc, message ):
+		''' Interpret NPC messages '''
 		if npc == 'Sorfina':
 			if message == 'Put on a shirt!':
 				return "waiting_quest( '" + npc + "', '%s', tutorial)"
@@ -47,6 +48,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			if message == 'Can you take care of the maggots?':
 				return "waiting_quest( '" + npc + "', '%s', maggots)"
 		return False
+
+	def getPartyMembership( self ):
+		''' Dummy party membership until lli is done '''
+		return None # None if no membership, else name of party
 
 	def updateKB( self ):
 		''' Update the knowledgebase based on current observation
@@ -141,6 +146,18 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 							update_predicate = 'assert( %s )' % update % self.avatar_name
 							self.kb.ask( update_predicate )
 							self.say( 'Updating knowledge base with: ' + update_predicate )
+
+			self.say( 'Updating my party membership ...' )
+			party = self.getPartyMembership()
+			if party:
+				delete_predicate = "retract( party( '%s', _ ) )" % self.avatar_name
+				update_predicate = "assert( party( '%s', '%s' ) )" % ( self.avatar_name, party )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( delete_predicate )
+				self.kb.ask( update_predicate )
+			else:
+				self.say( 'I am no party member ...' )
+				 
 
 	def updateObjectives( self ):
 		''' List all possible objectives (e.g. unsolved quests) '''

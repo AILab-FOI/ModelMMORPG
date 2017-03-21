@@ -62,6 +62,7 @@
 :- dynamic killed_giant_maggots/2.
 :- dynamic quest_no/4.
 :- dynamic npc_message/3.
+:- dynamic party/2.
 
 % %%%%%%%%%%%%%%%% %
 %  STANJE SUSTAVA  %
