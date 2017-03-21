@@ -13,6 +13,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def getInventory( self ):
 		''' Dummy inventory until lli is done '''
+		''' TODO: make all getters to return None if there were no changes to optimize update '''
 		return { 'bug leg':2, 'cotton shirt':1, 'hitchhikers towel':1 }
 
 	def getVisibleItems( self ):
@@ -52,6 +53,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def getPartyMembership( self ):
 		''' Dummy party membership until lli is done '''
 		return None # None if no membership, else name of party
+
+	def getSocialNetwork( self ):
+		''' Dummy social network until lli is done '''
+		return { 'Igor':'friend', 'Bogdan':'friend', 'Ivek':'enemy' }
 
 	def updateKB( self ):
 		''' Update the knowledgebase based on current observation
@@ -157,6 +162,15 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.kb.ask( update_predicate )
 			else:
 				self.say( 'I am no party member ...' )
+
+			self.say( 'Updating my social network ...' )
+			soc_net = self.getSocialNetwork()
+			delete_predicate = "retract( social_network( '%s', _, _ ) )" % self.avatar_name
+			self.kb.ask( delete_predicate )
+			for player, tag in soc_net.items():
+				update_predicate = "assert( social_network( '%s', '%s', '%s' ) )" % ( self.avatar_name, player, tag )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( update_predicate )
 				 
 
 	def updateObjectives( self ):

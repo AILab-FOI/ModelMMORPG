@@ -63,6 +63,8 @@
 :- dynamic quest_no/4.
 :- dynamic npc_message/3.
 :- dynamic party/2.
+:- dynamic social_network/3.
+
 
 % %%%%%%%%%%%%%%%% %
 %  STANJE SUSTAVA  %
@@ -70,8 +72,6 @@
 
 % On the world are the following:
 % ------------------------------
-
-npc_message( a, tanisha, hello ).
 
 % Agents:
 
