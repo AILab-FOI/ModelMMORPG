@@ -39,7 +39,7 @@
 :- dynamic location/4.
 :- dynamic ownership/3.
 :- dynamic diamonds/2.
-:- dynamic money/2.
+:- dynamic zeny/2.
 :- dynamic ability/2.
 :- dynamic done_quest/2.
 :- dynamic failed_quest/3.
@@ -61,6 +61,7 @@
 :- dynamic waiting_quest/3.
 :- dynamic killed_giant_maggots/2.
 :- dynamic quest_no/4.
+:- dynamic quest_sign/3.
 :- dynamic npc_message/3.
 :- dynamic party/2.
 :- dynamic social_network/3.
@@ -380,15 +381,15 @@ ownership(a8,diamonds,0).
 
 % Novci koje imaju agenti:
 
-ownership(a,money,1200).
-ownership(a1,money,13).
-ownership(a2,money,1).
-ownership(a3,money,35).
-ownership(a4,money,10).
-ownership(a5,money,108).
-ownership(a6,money,0).
-ownership(a7,money,97).
-ownership(a8,money,100).
+ownership(a,zeny,1200).
+ownership(a1,zeny,13).
+ownership(a2,zeny,1).
+ownership(a3,zeny,35).
+ownership(a4,zeny,10).
+ownership(a5,zeny,108).
+ownership(a6,zeny,0).
+ownership(a7,zeny,97).
+ownership(a8,zeny,100).
 
 % Broj Giant Maggots koje je do sada ubio pojedini agent:
 
@@ -829,11 +830,11 @@ collect_items(A,Item,N) :-
 %  - having completed another quest before
 %  - being at a certain level or above
 
-% Some have costs like items or money
+% Some have costs like items or zeny
 
 % Every quest will reward agent with something. The rewards can be:
 %  - EXP
-%  - money
+%  - zeny
 %  - items
 %  - equipment
 %  - Daily Points
@@ -915,10 +916,10 @@ do_quest(NPC,A,tutorial) :-
      walk_to_location(A,M,TanishaX,TanishaY),
      assert(plan(talk(A,tanisha,'I killed 5 Giant Maggots!'))),
      assert(plan(talk(tanisha,A,'Great, I give you 5*6 EXPs.'))),
-     ownership(A,money,MoneyA),
-     retract(ownership(A,money,MoneyA)),
-     NewMoneyA is MoneyA+5*6,
-     assert(ownership(A,money,NewMoneyA)),
+     ownership(A,zeny,zenyA),
+     retract(ownership(A,zeny,zenyA)),
+     NewzenyA is zenyA+5*6,
+     assert(ownership(A,zeny,NewzenyA)),
      assert(plan(talk(tanisha,A,'I inform you about things such as status points, since you just leveled up.'))),
      assert(plan(talk(A,A,'Now, I check out my Status Points and try to increase my stats. For starters, it is advisable to increase my Dexterity (at first), Strength and Vitality. Intelligence will be useful later in the game, when I know a bit of magic. For more information on Status Points, I can read on Status page (https://www.themanaworld.org/index.php/Stats) and Raising your stats on the Walkthrough page (https://www.themanaworld.org/index.php/Walkthrough).'))),
      assert(plan(talk(A,A,'I am now done with the Tutorial and I am free to explore The Mana World!'))),
@@ -1055,13 +1056,13 @@ do_quest(NPC,A,trade_skill) :-
      ownership(A,level,La), La>=1,                     % Agent je najmanje na levelu 1
      waiting_quest(NPC,A,trade_skill),           % Ovaj quest se nalazi na popisu agentovih questova koje treba obaviti
      \+ done_quest(A,trade_skill),      % Agent nije jos obavio ovaj quest
-     ownership(A,money,Ma), Ma>=5,                     % Agent ima najmanje 5 GP
+     ownership(A,zeny,Ma), Ma>=5,                     % Agent ima najmanje 5 GP
 %  Brisanja:
-     retract(ownership(A,money,Ma)),                   % Agent vise nema Ma novaca
+     retract(ownership(A,zeny,Ma)),                   % Agent vise nema Ma novaca
 %  Dodavanja:
      walk_to_location(A,M,XTT,YTT),            % Agent je odsetao do Trader-a
      assert(plan(talk(A,trader,'Do you have anything for me?'))),
-     NewMa is Ma-5, assert(ownership(A,money,NewMa)),  % Agent ima 5 GP manje
+     NewMa is Ma-5, assert(ownership(A,zeny,NewMa)),  % Agent ima 5 GP manje
      assert(ability(A,trade_ability)),       % Dodaj cinjenicu da agent sada ima Trade ability
      retract(waiting_quest(NPC,A,trade_skill))   % Brisi zapis da je agent dobio ovaj quest kao zadatak
      ->                                      % Ako je sve do ovdje obavljeno onda...
@@ -1248,10 +1249,10 @@ do_quest(NPC,A,vincent) :-
      done_quest(A,sarah),
      waiting_quest(NPC,A,vincent),
      \+ done_quest(A,vincent),
-     ownership(A,money,Ma),
-     retract(ownership(A,money,Ma)),
+     ownership(A,zeny,Ma),
+     retract(ownership(A,zeny,Ma)),
      NewMa is Ma+1000,
-     assert(ownership(A,money,NewMa)),
+     assert(ownership(A,zeny,NewMa)),
      walk_to_location(A,M,XVT,YVT),
      assert(plan(talk(A,vincent,'Hi Vincent!'))),
      assert(plan(talk(vincent,A,'Give me 10 Bug Legs for my action figure!'))),
@@ -1380,7 +1381,7 @@ do_quest(NPC,A,lieutenant_dausen) :-
      ownership(A,boots,Ba),                                             % Agent ima Ba Boots
 %  Brisanja:
      retract(ownership(A,boots,Ba)),                                    % Agent vise nema Ba Boots
-     retract(ownership(A,money,Ma)),                                    % Agent vise nema Ma GPs
+     retract(ownership(A,zeny,Ma)),                                    % Agent vise nema Ma GPs
 %  Dodavanja:
      walk_to_location(A,M,XLDSD,YLDSD),                         % Agent je odsetao do Lieutenant Dausena
      assert(plan(talk(A,lieutenant_dausen_in_sandstorm_desert,'Hi Lieutenant Dausen!'))),
@@ -1404,7 +1405,7 @@ do_quest(NPC,A,lieutenant_dausen) :-
      walk_to_location(A,M,XLDSD,YLDSD),                         % Agent se vraca kod Lieutenant Dausen
      assert(plan(talk(A,lieutenant_dausen_in_sandstorm_desert,'Hi Lieutenant Dausen again! Give mi 500 GP.'))), % Reci Lieutenant Dausen neka ti da 500 GP
      assert(plan(talk(lieutenant_dausen_in_sandstorm_desert,A,'I give you 500 GP!'))),
-     NewMa is Ma+500, assert(ownership(A,money,NewMa)),                 % Agent ima 500 GP vise
+     NewMa is Ma+500, assert(ownership(A,zeny,NewMa)),                 % Agent ima 500 GP vise
      assert(plan(talk(lieutenant_dausen_in_sandstorm_desert,A,'Nickos has a quest for you!'))),
      retract(waiting_quest(NPC,A,lieutenant_dausen))                   % Brisi zapis da je agent dobio ovaj quest kao zadatak
      ->                                                            % Ako je sve do ovdje obavljeno onda...
@@ -1487,9 +1488,9 @@ do_quest(NPC,A,miners_quest) :-
      walk_to_location(A,M,XLieutenantDausen,YLieutenantDausen),                         % Agent ide ponovo do Lieutenant Dausena
      assert(plan(talk(A,lieutenant_dausen,'Hi Lieutenant Dausen! I talk to you.'))),
      assert(plan(talk(lieutenant_dausen,A,'Hi Agent! I give you 500 GP.'))),
-     ownership(A,money,GPs),                                                                      % Agent ima GPs novaca
-     retract(ownership(A,money,GPs)),                                                             % Agent vise nema GPs novaca
-     NewGPs is GPs+500, assert(ownership(A,money,NewGPs)),                                        % Agent ima 500 novaca više
+     ownership(A,zeny,GPs),                                                                      % Agent ima GPs novaca
+     retract(ownership(A,zeny,GPs)),                                                             % Agent vise nema GPs novaca
+     NewGPs is GPs+500, assert(ownership(A,zeny,NewGPs)),                                        % Agent ima 500 novaca više
      location(nickos,M,XNickos,YNickos),                                                % Nickos se nalazi na lokaciji (XNickos,YNickos)
      walk_to_location(A,M,XNickos,YNickos),                                             % Agent go to Nickos situated in front of the mine
      assert(plan(talk(A,nickos,'Hi Nickos! Can you let me go into the mine?'))),
@@ -1507,9 +1508,9 @@ do_quest(NPC,A,miners_quest) :-
      walk_to_location(A,M,XNickos,YNickos),
      assert(plan(talk(A,nickos,'Hi Nickos! I spoke with Nathan and Naem.'))),
      assert(plan(talk(nickos,A,'OK! I give you 500 GPs.'))),
-     ownership(A,money,GPs),
-     retract(ownership(A,money,GPs)),
-     NewGPs is GPs+500, assert(ownership(A,money,NewGPs)),
+     ownership(A,zeny,GPs),
+     retract(ownership(A,zeny,GPs)),
+     NewGPs is GPs+500, assert(ownership(A,zeny,NewGPs)),
      walk_to_location(A,M,XLieutenantDausen,YLieutenantDausen),
      assert(plan(talk(A,lieutenant_dausen,'Hi Lieutenant Dausen! I talk to you again.'))),
      walk_to_location(A,M,XNickos,YNickos),
@@ -1555,15 +1556,15 @@ do_quest(NPC,A,letter_quest) :-
      ownership(A,level,La), La>=21,
      waiting_quest(NPC,A,letter_quest),
      location(graveyard,M,XGraveyard,YGraveyard),
-    (ownership(A,money,Ma),Ma>=750, /* ... a možda ima i neke dodatne razloge za pješaèenje koje bi trebalo ovdje navesti */
+    (ownership(A,zeny,Ma),Ma>=750, /* ... a možda ima i neke dodatne razloge za pješaèenje koje bi trebalo ovdje navesti */
      location(dyrin,M,XDyrin,YDyrin)
      ->
      walk_to_location(A,M,XDyrin,YDyrin),
      assert(plan(talk(A,dyrin,'Hi Dyrin! I pay yout 750 GP for transport to Graveyard.'))),
      assert(plan(talk(dyrin,A,'OK. Let`s go!'))),
-     retract(ownership(A,money,Ma)),
+     retract(ownership(A,zeny,Ma)),
      NewMa is Ma-750,
-     assert(ownership(A,money,NewMa));
+     assert(ownership(A,zeny,NewMa));
      walk_to_location(A,M,XGraveyard,YGraveyard)), /* Ovdje je možda potrebno preciznije navesti plan za pješaèenje u Graveyard */
      /* Ovdje idu upute za ostatak questa */
      retract(waiting_quest(NPC,A,letter_quest))

@@ -44,11 +44,23 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		''' Interpret NPC messages '''
 		if npc == 'Sorfina':
 			if message == 'Put on a shirt!':
-				return "waiting_quest( '" + npc + "', '%s', tutorial)"
+				return "waiting_quest( '" + npc + "', '%s', tutorial )", "tutorial"
 		elif npc == 'Tanisha':
 			if message == 'Can you take care of the maggots?':
-				return "waiting_quest( '" + npc + "', '%s', maggots)"
-		return False
+				return "waiting_quest( '" + npc + "', '%s', maggots )", "maggots"
+		return False, None
+
+	def getQuestSignificance( self, quest ):
+		''' Hard-coded significances of various quests loosely modelled after 
+		    time of acquirement. First one is Sorfina's tutorial, then Tanisha's
+		    maggots, then ... '''
+		if quest == 'tutorial':
+			return 10000
+		elif quest == 'maggots':
+			return 9999
+		else:
+			# (yet) unknown quest
+			return 0
 
 	def getPartyMembership( self ):
 		''' Dummy party membership until lli is done '''
@@ -145,10 +157,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 					update_predicate = "assert( npc_message( '%s', '%s', '%s' ) )" % ( self.avatar_name, npc, message )
 					self.kb.ask( update_predicate )
 					self.say( 'Updating knowledge base with: ' + update_predicate )
-					update = self.interpretNPCMessage( npc, message )
+					update, quest = self.interpretNPCMessage( npc, message )
 					if update:
 						if not self.kb.ask( update % self.avatar_name ): # if I haven't got this quest already
 							update_predicate = 'assert( %s )' % update % self.avatar_name
+							self.kb.ask( update_predicate )
+							self.say( 'Updating knowledge base with: ' + update_predicate )
+							sign = self.getQuestSignificance( quest )
+							update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )							
 							self.kb.ask( update_predicate )
 							self.say( 'Updating knowledge base with: ' + update_predicate )
 
