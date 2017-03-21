@@ -38,7 +38,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def getNewNPCMessages( self ):
 		''' Dummy NPC messages until lli is done '''
-		return { 'Sorfina': [ 'Hello!', 'Put on a shirt!' ], 'Tanisha': [ 'Can you take care of the maggots?' ] }
+		return { 'Sorfina': [ 'Hello!', 'Put on a shirt!' ], 'Tanisha': [ 'Can you take care of the maggots?', 'Go outside!' ] }
 
 	def interpretNPCMessage( self, npc, message ):
 		''' Interpret NPC messages '''
@@ -48,6 +48,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		elif npc == 'Tanisha':
 			if message == 'Can you take care of the maggots?':
 				return "waiting_quest( '" + npc + "', '%s', maggots )", "maggots"
+			elif message == 'Go outside!':
+				return "waiting_quest( '" + npc + "', '%s', outside )", "outside"
 		return False, None
 
 	def getQuestSignificance( self, quest ):
@@ -58,6 +60,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			return 10000
 		elif quest == 'maggots':
 			return 9999
+		elif quest == 'outside':
+			return 9998
 		else:
 			# (yet) unknown quest
 			return 0
@@ -164,7 +168,12 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 							self.kb.ask( update_predicate )
 							self.say( 'Updating knowledge base with: ' + update_predicate )
 							sign = self.getQuestSignificance( quest )
-							update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )							
+							update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )
+							self.kb.ask( update_predicate )
+							self.say( 'Updating knowledge base with: ' + update_predicate )
+							delete_predicate = "retract( quest_no( '%s', '%s', '%s', _ ) )" % ( npc, self.avatar_name, quest )
+							self.kb.ask( delete_predicate )
+							update_predicate = "assert( quest_no( '%s', '%s', '%s', 1 ) )" % ( npc, self.avatar_name, quest )
 							self.kb.ask( update_predicate )
 							self.say( 'Updating knowledge base with: ' + update_predicate )
 
@@ -214,7 +223,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def selectObjective( self, objectives ):
 		''' Select most relevant objective (quest) to be solved next '''
-		quests = self.askBelieve( 'sort_quests( A ), quest_no( NPC, A, Name, No ).' )
+		quests = self.askBelieve( "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No )." % ( self.avatar_name, self.avatar_name ) )
 		if quests:
 			next = sorted( quests, key=lambda x: x[ 'No' ] )[ 0 ][ 'Name' ]
 			self.say( 'My next objective is quest: ' + next )

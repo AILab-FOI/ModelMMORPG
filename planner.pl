@@ -682,20 +682,23 @@ waiting_quest(npc,a,letter_quest).
 
 % Significance of quest for agent:
 
+/*
 quest_sign(a,tutorial,100).
 quest_sign(a,maggots,95).
 quest_sign(a,sandra,90).
 quest_sign(a,lieutenant_dausen,60).
 quest_sign(a,emote_skill,40).
 quest_sign(a,miners_quest,15).
+*/
 
 % Redni brojevi odnosno redosljed po kojem neki agent treba rješavati Questove (izraèunava se na temelju gornjih osobina questova i povremeno se ponovo preraèunava):
-
+/*
 quest_no(npc,a,miners_quest,5).
 quest_no(npc,a,tutorial,4).
 quest_no(npc,a,sandra,3).
 quest_no(npc,a,lieutenant_dausen,2).
 quest_no(npc,a,emote_skill,1).
+*/
 
 % Sorting quests of an agent by priority:
 % --------------------------------------
@@ -708,7 +711,7 @@ sort_quests(A) :-
      quest_no(NPC1,A,Q1,QN1),
      quest_no(NPC2,A,Q2,QN2),
      QS1>QS2,
-     QN1>QN2
+     QN1>=QN2
      ->
      retract(quest_no(NPC1,A,Q1,QN1)),
      retract(quest_no(NPC2,A,Q2,QN2)),
