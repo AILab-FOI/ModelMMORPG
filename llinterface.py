@@ -1148,7 +1148,7 @@ class Connection:
 	def createParty (self, partyName): # WORKS
 		self.srv.sendall( "\xF9\0%s" % partyName.ljust(24, '\0'))
 		
-	def whereJozek (self): # GM chat messages
+	def locatePlayer (self): # GM chat messages
 		self.srv.sendall( "\x8c\0\x13\x00\x4a\x6f\x7a\x65\x6b\x20\x3a\x20\x40\x77\x68\x65\x72\x65\x00" )
 		#self.srv.sendall( "\x8c\0%s" % (struct.pack("<H", "igor : @where jozek"))) 
 		
@@ -1289,7 +1289,7 @@ if __name__ == '__main__':
 	c.pb.go()		
 	
 	# Get the initial location of the player:
-	c.whereJozek()
+	c.locatePlayer()
 		
 	while not c.pb.hasNew():
 		time.sleep( 0.1 )
@@ -1394,7 +1394,7 @@ if __name__ == '__main__':
 			c.createParty(partyName) 
 			
 		elif command == "11": 
-			c.whereJozek()
+			c.locatePlayer()
 			
 		elif command == "12":
 			c.goToDroppedItem()
