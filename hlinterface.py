@@ -12,15 +12,12 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		print '%s: %s' % ( self.name.split( '@' )[ 0 ], str( msg ) )
 
 	def getInventory( self ):
-		''' Dummy inventory until lli is done '''
+		''' Get current inventory '''
 		''' TODO: make all getters to return None if there were no changes to optimize update '''
 		try:
 			inventory = self.pb.playerInventory
 			if inventory:
-				#self.say( inventory )
-				#print [ ( i.itemID, i.itemAmount ) for i in inventory.values() ]
 				inv = dict( [ ( i.itemID, i.itemAmount ) for i in inventory.values() ] )
-				#print inv
 				return inv
 		except:
 			return {}
@@ -31,6 +28,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def getVisibleMobs( self ):
 		''' Dummy visible mobs until lli is done '''
+		try:
+			mobs = self.pb.monsterMovements
+			print mobs
+		except:
+			pass
 		return { 'maggot':( '085-1', 125, 142 ), 'black scorpion':( '085-1', 122, 132 ) }
 
 	def getVisibleNPCs( self ):
@@ -291,6 +293,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'Planner loaded!' )
 		except:
 			self.say( 'Error while loading planner, aborting!' )
+			import sys
+			sys.exit()
+
+		try:		
+			self.kb.ask( "['item-db.pl']" )
+			self.say( 'Item knowledge base loaded!' )
+		except:
+			self.say( 'Error while loading item knowledge base, aborting!' )
 			import sys
 			sys.exit()
 
