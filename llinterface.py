@@ -284,6 +284,8 @@ class Character:
 
 class PacketBuffer( threading.Thread ):
 	
+		
+	
 	'''Thread to deal with incomming packets from a given socket server'''
 	def __init__( self, server ):
 		'''Initialize server handle and packet-list to hold packets (initially empty)'''
@@ -293,13 +295,37 @@ class PacketBuffer( threading.Thread ):
 		self.stahp = False
 		self.buffer = None
 		self.kill = False
+		
+		self.playerInventory = {}
+		self.playerMap = None
+		self.playerPosX = None
+		self.playerPosY = None
+		
 
+	def updatePlayerData (self, slots):
+		self.playerSlots = slots
+		
+	
+	
 	def run( self ):
 		'''Main thread (receive a packet, create a Packet instance and append it to packet list'''
 		while True:
 			buff = self.recv()
 			if buff:
 				packet = Packet( buff )
+				
+				# INVENTORY:
+				self.playerInventory = packet.playerSlots
+				
+				# POSITION:
+				self.playerMap = Packet.mapID
+				self.playerPosX = Packet.chatCoordinates_x
+				self.playerPosY = Packet.chatCoordinates_y
+	
+				# debug (self.playerMap, self.playerPosX, self.playerPosY)
+				# debug ("\n\npacket created\n\n")
+				
+				
 				self.packets.append( packet )
 				#debug( "\n\n" )
 				#debug( self.packets )
@@ -393,6 +419,10 @@ class Item:
     self.itemAmount = itemAmount
     
 		
+		
+		
+		
+		
 class Packet:
 	
 	'''Class to hold data about a given packet'''
@@ -407,6 +437,7 @@ class Packet:
 	chatCoordinates = None
 	chatCoordinates_x = None
 	chatCoordinates_y = None
+	mapID = None
 	
 	playerMovesTo_ID = None
 	playerMovesTo_x = None
@@ -422,6 +453,8 @@ class Packet:
 	playerEquipment = {}
 	
 	playerSlots = {}
+	
+	
 	
 	whoInvites = None
 	
@@ -705,7 +738,9 @@ class Packet:
 				del mapID[:pos2+2]
 				pos2 = mapID.index("(")
 				del mapID[pos2-1:]
+				
 				mapID = "".join(mapID)
+				Packet.mapID = mapID
 				
 				debug ("MAP ID: %s" %mapID)
 				
@@ -830,6 +865,7 @@ class Packet:
 				
 				inventory = inventory [18:]
 			
+						
 		elif self.type == 'SMSG_PLAYER_EQUIPMENT':
 			debug( "\n\nEQUIPMENT DETECTED: \n" )
 			equipment = self.data[4:]
@@ -1250,7 +1286,11 @@ if __name__ == '__main__':
 	c.login()
 
 	time.sleep( 1 )
-	c.pb.go()			
+	c.pb.go()		
+	
+	# Get the initial location of the player:
+	c.whereJozek()
+		
 	while not c.pb.hasNew():
 		time.sleep( 0.1 )
 	
