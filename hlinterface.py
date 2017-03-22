@@ -33,8 +33,13 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		return { 'Bogdan':( '085-1', 125, 142 ), 'Igor':( '085-1', 122, 132 ) }
 
 	def getMyLocation( self ):
-		''' Dummy location until lli is done '''
-		return ( '085-1', 119, 132 )
+		''' Get player location '''
+		try:
+			location = ( self.pb.playerMap, self.pb.playerPosX, self.pb.playerPosY )
+			if location[ 0 ]:
+				return location
+		except:
+			return None
 
 	def getNewNPCMessages( self ):
 		''' Dummy NPC messages until lli is done '''
@@ -148,11 +153,16 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.kb.ask( update_predicate )
 
 			self.say( 'Updating my location ...' )
-			mapname, x, y = self.getMyLocation()
-			# Do not need to delete my location since all locations were deleted earlier
-			update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( self.avatar_name, mapname, x, y )
-			self.say( 'Updating knowledge base with: ' + update_predicate )
-			self.kb.ask( update_predicate )
+			location = self.getMyLocation()
+			self.say( location )
+			if location:
+				mapname, x, y = location 
+				# Do not need to delete my location since all locations were deleted earlier
+				update_predicate = "assert( location( '%s', '%s', %s, %s ) )" % ( self.avatar_name, mapname, x, y )
+				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( update_predicate )
+			else:
+				self.say( 'Location unknown ...' )
 
 			self.say( 'Updating NPC conversations ...' ) # not deleting old messages
 			npc_messages = self.getNewNPCMessages()
@@ -235,7 +245,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.myAgent.login()
 
 			time.sleep( 1 )
-			self.myAgent.pb.go()			
+			self.myAgent.pb.go()
+			
+			self.myAgent.locatePlayer()
+		
 			while not self.myAgent.pb.hasNew():
 				time.sleep( 0.1 )
 
