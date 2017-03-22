@@ -304,6 +304,8 @@ class PacketBuffer( threading.Thread ):
 		
 		self.droppedItems = {}
 		
+		self.monsterMovements = {}
+		
 
 	def updatePlayerData (self, slots):
 		self.playerSlots = slots
@@ -328,14 +330,18 @@ class PacketBuffer( threading.Thread ):
 				# DROPPED ITEMS ON THE MAP
 				self.droppedItems = Packet.droppedItemDict
 				
+				# MONSTER MOVEMENTS (id, x, y)
+				self.monsterMovements = Packet.critterMovements
+				
 				# debug (self.playerMap, self.playerPosX, self.playerPosY)
 				# debug ("\n\npacket created\n\n")
 				# debug (self.droppedItems)
-				
-				
+				# debug (self.monsterMovements)
+								
 				self.packets.append( packet )
 				#debug( "\n\n" )
 				#debug( self.packets )
+			
 			if self.kill:
 				return
 			
@@ -667,8 +673,7 @@ class Packet:
 			ItemIndex = struct.unpack ("<H", self.data[2:4])[0]
 			ItemAmount = struct.unpack ("<H", self.data[4:6])[0]
 			ItemID = struct.unpack ("<H", self.data[6:8])[0]
-			
-			
+						
 			#droppedItemINDEX2 = struct.unpack ("<B", self.data[63])
 			#droppedItemINDEX2 = struct.unpack ("<B", self.data[-2])
 			#droppedItemINDEX3 = struct.unpack ("<B", self.data[-3])
@@ -770,6 +775,9 @@ class Packet:
 		elif self.type == 'SMSG_TRADE_REQUEST':		
 			debug( "\n\nTrade request inbound! Use main menu to answer." )
 			
+		elif self.type == 'SMSG_BEING_VISIBLE':
+			debug ("BEING VISIBLE!")
+		
 		
 		elif self.type == 'SMSG_BEING_MOVE':
 			
