@@ -14,7 +14,16 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def getInventory( self ):
 		''' Dummy inventory until lli is done '''
 		''' TODO: make all getters to return None if there were no changes to optimize update '''
-		return { 'bug leg':2, 'cotton shirt':1, 'hitchhikers towel':1 }
+		try:
+			inventory = self.pb.playerInventory
+			if inventory:
+				#self.say( inventory )
+				#print [ ( i.itemID, i.itemAmount ) for i in inventory.values() ]
+				inv = dict( [ ( i.itemID, i.itemAmount ) for i in inventory.values() ] )
+				#print inv
+				return inv
+		except:
+			return {}
 
 	def getVisibleItems( self ):
 		''' Dummy visible items until lli is done '''
@@ -109,13 +118,17 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.kb.ask( update_predicate )
 
 			self.say( 'Updating my inventory ...' )
+			
 			inv = self.getInventory()
-			for itemid, amount in inv.items():
-				delete_predicate = "retract( ownership( '%s', '%s', _ ) )" % ( self.avatar_name, itemid )
-				update_predicate = "assert( ownership( '%s', '%s', %d ) )" % ( self.avatar_name, itemid, amount )
-				self.say( 'Updating knowledge base with: ' + update_predicate )
-				self.kb.ask( delete_predicate )
-				self.kb.ask( update_predicate )
+			if inv:
+				for itemid, amount in inv.items():
+					delete_predicate = "retract( ownership( '%s', '%s', _ ) )" % ( self.avatar_name, itemid )
+					update_predicate = "assert( ownership( '%s', '%s', %d ) )" % ( self.avatar_name, itemid, amount )
+					self.say( 'Updating knowledge base with: ' + update_predicate )
+					self.kb.ask( delete_predicate )
+					self.kb.ask( update_predicate )
+			else:
+				self.say( 'Inventory not loaded yet ...' )
 
 			self.say( 'Updating visible mobs ...' )
 			mobs = self.getVisibleMobs()
@@ -154,7 +167,6 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 			self.say( 'Updating my location ...' )
 			location = self.getMyLocation()
-			self.say( location )
 			if location:
 				mapname, x, y = location 
 				# Do not need to delete my location since all locations were deleted earlier
