@@ -399,7 +399,7 @@ class PacketBuffer( threading.Thread ):
 				return True
 		elif [ i for i in self.packets if not i.seen ]:
 			return True
-		return False
+		return False	
 
 	def stop( self ):
 		'''Stop reading packets'''
@@ -775,10 +775,11 @@ class Packet:
 		elif self.type == 'SMSG_TRADE_REQUEST':		
 			debug( "\n\nTrade request inbound! Use main menu to answer." )
 			
-		elif self.type == 'SMSG_BEING_VISIBLE':
-			debug ("BEING VISIBLE!")
-		
-		
+		#elif self.type == 'SMSG_BEING_VISIBLE': Unknown being coordinates
+			#debug ("BEING VISIBLE!")
+			#self.spawnedID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
+			#debug (self.spawnedID)
+			
 		elif self.type == 'SMSG_BEING_MOVE':
 			
 			self.CritterID =  struct.unpack( "<L", self.data[ 2:6 ] )[0] #WORKS; gets being ID
