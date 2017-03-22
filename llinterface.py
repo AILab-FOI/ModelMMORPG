@@ -736,7 +736,9 @@ class Packet:
 			
 		elif self.type == 'SMSG_PLAYER_CHAT':
 			
-			if re.match (".*[a-z]+\:\ [0-9]+\-[0-9]\ \([0-9]+\,[0-9]+", self.data) is not None:
+			# debug("CHAT") # testing the packet identification
+			
+			if re.match (".*[a-zA-Z0-9]+\:\ [0-9]+\-[0-9]\ \([0-9]+\,[0-9]+", self.data) is not None:
 				debug( "\n\nIncoming coordinates found!" )
 				Packet.chatCoordinates = self.data
 				
@@ -1051,7 +1053,11 @@ class Connection:
 		for j in [ i.__dict__ for i in self.characters.values() ]:
 			debug( j[ "name" ] )
 			debug( j )
-
+			
+		# Extracting character name for later functions:
+		self.characterName = j["name"]
+		# debug (self.characterName)
+		
 		self.pb.stop()
 		self.srv.sendall( "\x66\0%s" % chr( self.character ) )
 		self.pb.go()
@@ -1166,7 +1172,26 @@ class Connection:
 		self.srv.sendall( "\xF9\0%s" % partyName.ljust(24, '\0'))
 		
 	def locatePlayer (self): # GM chat messages
-		self.srv.sendall( "\x8c\0\x13\x00\x4a\x6f\x7a\x65\x6b\x20\x3a\x20\x40\x77\x68\x65\x72\x65\x00" )
+		
+		debug ("Character %s location:" %self.characterName)
+		charNameHex = self.characterName.encode("hex")
+		
+		# debug (charNameHex)
+		# debug (type(charNameHex))
+		
+		# 4a 6f 7a 65 6b ("Jozek")
+		# 20 3a 20 40 77 68 65 72 65 (" : @where")
+		
+		locateCommand = charNameHex + "203a20407768657265" + "00"
+		locateCommand = locateCommand.decode("hex")
+		packetLength = len(locateCommand) + 4
+		
+		# debug (locateCommand)
+		
+		self.srv.sendall( "\x8c\0%s%s" %(struct.pack("<H", packetLength),locateCommand))
+		
+		#self.srv.sendall( "\x8c\0\x13\x00%s" %locateCommand) # x13 je velicina paketa, koja nije fiksna
+		#self.srv.sendall( "\x8c\0\x13\x00\x4a\x6f\x7a\x65\x6b\x20\x3a\x20\x40\x77\x68\x65\x72\x65\x00" ) # WORKS for Jozek
 		#self.srv.sendall( "\x8c\0%s" % (struct.pack("<H", "igor : @where jozek"))) 
 		
 	def whereAnyone (self, hunter, victim): # Works for Jozek -> igor
@@ -1333,7 +1358,7 @@ if __name__ == '__main__':
 		debug( "8. Equip Item" )
 		debug( "9. EXIT" )
 		debug( "10. PARTY: Create party" )
-		debug( "11. Where Jozek?" )
+		debug( "11. Where am I?" )
 		debug( "12. Go near the last dropped item!" )
 		debug( "13. Go near the player!" )
 		debug( "14. Where is anyone?"  )
