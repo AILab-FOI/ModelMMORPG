@@ -297,9 +297,12 @@ class PacketBuffer( threading.Thread ):
 		self.kill = False
 		
 		self.playerInventory = {}
+		
 		self.playerMap = None
 		self.playerPosX = None
 		self.playerPosY = None
+		
+		self.droppedItems = {}
 		
 
 	def updatePlayerData (self, slots):
@@ -321,9 +324,13 @@ class PacketBuffer( threading.Thread ):
 				self.playerMap = Packet.mapID
 				self.playerPosX = Packet.chatCoordinates_x
 				self.playerPosY = Packet.chatCoordinates_y
-	
+				
+				# DROPPED ITEMS ON THE MAP
+				self.droppedItems = Packet.droppedItemDict
+				
 				# debug (self.playerMap, self.playerPosX, self.playerPosY)
 				# debug ("\n\npacket created\n\n")
+				# debug (self.droppedItems)
 				
 				
 				self.packets.append( packet )
