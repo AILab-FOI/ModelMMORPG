@@ -314,6 +314,7 @@ class PacketBuffer( threading.Thread ):
 	
 	def run( self ):
 		'''Main thread (receive a packet, create a Packet instance and append it to packet list'''
+		global Packet
 		while True:
 			buff = self.recv()
 			if buff:
@@ -333,10 +334,10 @@ class PacketBuffer( threading.Thread ):
 				# MONSTER MOVEMENTS (id, x, y)
 				self.monsterMovements = Packet.critterMovements
 				
-				# debug (self.playerMap, self.playerPosX, self.playerPosY)
-				# debug ("\n\npacket created\n\n")
-				# debug (self.droppedItems)
-				# debug (self.monsterMovements)
+				#debug (self.playerMap, self.playerPosX, self.playerPosY)
+				#debug ("\n\npacket created\n\n")
+				#debug (self.droppedItems)
+				#debug (self.monsterMovements)
 								
 				self.packets.append( packet )
 				#debug( "\n\n" )
