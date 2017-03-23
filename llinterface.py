@@ -320,7 +320,7 @@ class PacketBuffer( threading.Thread ):
 			if buff:
 				packet = Packet( buff )
 				
-				# INVENTORY:
+				# INVENTORY: 
 				self.playerInventory = packet.playerSlots
 				
 				# POSITION:
@@ -337,7 +337,7 @@ class PacketBuffer( threading.Thread ):
 				#debug (self.playerMap, self.playerPosX, self.playerPosY)
 				#debug ("\n\npacket created\n\n")
 				#debug (self.droppedItems)
-				#debug (self.monsterMovements)
+				debug (self.monsterMovements)
 								
 				self.packets.append( packet )
 				#debug( "\n\n" )
@@ -623,10 +623,12 @@ class Packet:
 				
 				# debug ("CHARACTER ID: %d" %c.char_id ) # NOT THE SAME ID as in-game ID ?
 		
+		
 		elif self.type == 'SMSG_CHAR_MAP_INFO':
 			self.charid = struct.unpack( "<L", self.data[ 2:6 ] )[ 0 ]
 			self.mapip = self._parse_ip( self.data[ 22:26 ] )
 			self.mapport = struct.unpack( "<H", self.data[ 26:28 ] )[ 0 ]
+		
 		
 		elif self.type == 'SMSG_UPDATE_HOST':
 			#raise UpdateError, 'Server requests client update!\nComment out update_host: (...) in ./tmwa-server-data/login/conf/local_login.conf'
@@ -640,6 +642,7 @@ class Packet:
 			#self.message = self.data[ 8:-1 ]
 			#self.choices = self.message.split( ':' )[ :-1 ]
 			#self.NPCid =  struct.unpack( "<L", self.data[ 4:8 ] )[ 0 ]
+		
 		
 		elif self.type == 'SMSG_PLAYER_WARP':
 			self.map = self.data.split( '\0' )[ 1 ]
@@ -786,7 +789,9 @@ class Packet:
 		elif self.type == 'SMSG_BEING_MOVE':
 			
 			self.CritterID =  struct.unpack( "<L", self.data[ 2:6 ] )[0] #WORKS; gets being ID
+			self.CritterType = struct.unpack( "<H", self.data[ 14:16 ] )[0] # WORKS: identifies scorpion, maggot, etc.
 			
+			# debug( self.CritterType )
 			# debug( self.CritterID )
 			# debug ( type(self.CritterID) )
 			
@@ -817,9 +822,9 @@ class Packet:
 			
 			
 			try:				# WORKS, append the new movement to the existing critter ID
-				Packet.critterMovements[self.CritterID].append((x,y))
+				Packet.critterMovements[self.CritterID].append((self.CritterType, x,y))
 			except KeyError: 	# WORKS, add the new critter ID and the observed movement
-				Packet.critterMovements[self.CritterID] = [(x,y)]
+				Packet.critterMovements[self.CritterID] = [(self.CritterType, x,y)]
 
 			# NOTE: if we put self.critterMovements instead of class variable Packet.critterMovements, 
 			# the dictionary is reset by every received package
