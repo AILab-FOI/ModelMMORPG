@@ -24,8 +24,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			return {}
 
 	def getVisibleItems( self ):
-		''' Dummy visible items until lli is done '''
-		return { 'maggot slime':( '085-1', 125, 142 ), 'bug leg':( '085-1', 122, 132 ) }
+		''' Get visible (dropped) items
+		    Returns dictionary { itemID: ( amount, mapID, X, Y ) } '''
+		try:
+			items = self.pb.droppedItems
+			items = dict( [ ( i[ 0 ], ( i[ 3 ], self.pb.playerMap, i[ 1 ], i[ 2 ] ) ) for i in item ] )
+			return
+		except:
+			return {}
 
 	def getVisibleMobs( self ):
 		''' Get visible mobs 
@@ -168,11 +174,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 			self.say( 'Updating visible items ...' )
 			itms = self.getVisibleItems()
-			for item, loc in itms.items():
-				mapname, x, y = loc
-				update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( item, mapname, x, y )
-				self.say( 'Updating knowledge base with: ' + update_predicate )
-				self.kb.ask( update_predicate )
+			if itms:
+				for item, loc in itms.items():
+					amount, mapname, x, y = loc
+					update_predicate = "assert( location( '%s', %d, '%s', %d, %d ) )" % ( item, amount, mapname, x, y )
+					self.say( 'Updating knowledge base with: ' + update_predicate )
+					self.kb.ask( update_predicate )
+			else:
+				self.say( 'No items lying around at this location ...' )
 
 			self.say( 'Updating my location ...' )
 			location = self.getMyLocation()
