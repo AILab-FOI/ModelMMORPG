@@ -272,15 +272,22 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	class Login( spade.Behaviour.OneShotBehaviour ):
 		def _process( self ):
-			self.myAgent.login()
+			login_complete = False
+			while not login_complete:
+				self.myAgent.login()
 
-			time.sleep( 1 )
-			self.myAgent.pb.go()
+				time.sleep( 1 )
+				self.myAgent.pb.go()
 			
-			self.myAgent.locatePlayer()
-		
-			while not self.myAgent.pb.hasNew():
-				time.sleep( 0.1 )
+				self.myAgent.locatePlayer()
+
+				while not self.myAgent.pb.hasNew():
+					time.sleep( 0.1 )
+				
+				if not self.myAgent.pb.playerMap:
+					continue
+				
+				login_complete = True
 
 	class Reason( spade.Behaviour.Behaviour ):
 		def _process( self ):
