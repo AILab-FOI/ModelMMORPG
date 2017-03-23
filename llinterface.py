@@ -308,6 +308,9 @@ class PacketBuffer( threading.Thread ):
 		
 		self.talkingToNPC = None
 		
+		self.detectedNPClist = []
+		
+		self.loggedInPlayers = None
 
 	def updatePlayerData (self, slots):
 		self.playerSlots = slots
@@ -339,11 +342,15 @@ class PacketBuffer( threading.Thread ):
 				# Player is talking to NPC with name:
 				self.talkingToNPC = Packet.talkingWithNPC
 				
+				# List all logged in players
+				self.loggedInPlayers = Packet.loggedInPlayers
+				
 				#debug (self.playerMap, self.playerPosX, self.playerPosY)
 				#debug ("\n\npacket created\n\n")
 				#debug (self.droppedItems)
 				#debug (self.monsterMovements)
-				debug (self.talkingToNPC)
+				#debug (self.talkingToNPC)
+				debug (self.loggedInPlayers)
 								
 				self.packets.append( packet )
 				#debug( "\n\n" )
@@ -476,7 +483,9 @@ class Packet:
 	
 	talkingWithNPC = None
 	
+	npcDetectedName  = []
 	
+	loggedInPlayers = []
 	
 	whoInvites = None
 	
@@ -553,6 +562,8 @@ class Packet:
 			while buff:
 				c = Character()
 				c.char_id = struct.unpack( "<L", buff[ :4 ] )[ 0 ]
+				#~ debug("\n\n\n")
+				#~ debug(c.char_id)
 				buff = buff[ 4: ]
 				c.exp = struct.unpack( "<L", buff[ :4 ] )[ 0 ]
 				buff = buff[ 4: ]
@@ -788,17 +799,31 @@ class Packet:
 				Packet.chatCoordinates_y = "".join(Packet.chatCoordinates[pos+1:])
 				debug( "Coordinates Y: %s" %Packet.chatCoordinates_y )
 			
+			elif "Name: " in self.data:
+				#~ debug ("-- ALL PLAYERS LOCATED --")
+				#~ debug (self.data[4:])
+				
+				if (self.data[4:]) not in Packet.loggedInPlayers:
+					Packet.loggedInPlayers.append(self.data[4:])
+				
+				
 			#else:
 				#debug( "\n\nnon-coordinates chat inbound: %s" %self.data )
 				
+		
+		
 		elif self.type == 'SMSG_TRADE_REQUEST':		
 			debug( "\n\nTrade request inbound! Use main menu to answer." )
 			
+		
+		
 		#elif self.type == 'SMSG_BEING_VISIBLE': Unknown being coordinates
 			#debug ("BEING VISIBLE!")
 			#self.spawnedID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
 			#debug (self.spawnedID)
 			
+		
+		
 		elif self.type == 'SMSG_BEING_MOVE':
 			
 			self.CritterID =  struct.unpack( "<L", self.data[ 2:6 ] )[0] #WORKS; gets being ID
@@ -877,8 +902,11 @@ class Packet:
 			# debug(Packet.playerMovesTo_x, Packet.playerMovesTo_y) # WORKS
 		
 		
-		# elif self.type == 'SMSG_BEING_NAME_RESPONSE':
-			# debug (" \n\n\nNAME DETECTED \n\n\n ")
+		
+		elif self.type == 'SMSG_BEING_NAME_RESPONSE':
+			debug (" \n\nNPC NAME DETECTED \n\n ")
+			Packet.npcDetectedName.append(self.data[6:11])
+			debug (Packet.npcDetectedName)
 	
 			
 		
@@ -977,6 +1005,7 @@ class Packet:
 			#debug( "\n\nChoose answer\n\n" )
 			#debug( npcMessageQuery )
 			
+		
 		elif self.type == 'SMSG_NPC_CLOSE':
 			#~ debug ("CLOSING NPC COMMUNICATION")
 			Packet.talkingWithNPC = None
@@ -1002,6 +1031,7 @@ class Packet:
 			
 		# elif self.type == 'SMSG_PLAYER_SKILLS':
 			# debug (" \n\n\nSTATUS CHANGE DETECTED \n\n\n ")
+		
 		
 		
 		elif self.type == 'SMSG_BEING_CHANGE_LOOKS2': # WORKS, extracting the player ID
@@ -1239,6 +1269,14 @@ class Connection:
 		#self.srv.sendall( "\x8c\0\x13\x00\x4a\x6f\x7a\x65\x6b\x20\x3a\x20\x40\x77\x68\x65\x72\x65\x00" ) # WORKS for Jozek
 		#self.srv.sendall( "\x8c\0%s" % (struct.pack("<H", "igor : @where jozek"))) 
 		
+	def listAllPlayers (self):
+		charNameHex = self.characterName.encode("hex")
+		listCommand = charNameHex + "203a204077686f00"
+		listCommand = listCommand.decode("hex")
+		packetLength = len(listCommand) + 4
+		self.srv.sendall( "\x8c\0%s%s" %(struct.pack("<H", packetLength),listCommand))
+		debug("\n-- list all players command sent-- ")
+		
 	def whereAnyone (self, hunter, victim): # Works for Jozek -> igor
 		self.srv.sendall( "\x8c\x00\x18\x00%s : @where %s\x00" %(hunter, victim))
 		
@@ -1429,6 +1467,7 @@ if __name__ == '__main__':
 		debug( "34. Show (*initial*) Player Equipment" )
 		debug( "35. Show (*initial*) Player Slots" )
 		debug( "36. Drop item" )
+		debug( "37. List all logged in characters with their position")
 		
 		debug( 67 * "-" )
 		
@@ -1582,6 +1621,9 @@ if __name__ == '__main__':
 			itemIndex = int(raw_input("Please enter item Index: "))
 			itemQ = int(raw_input("Please enter item quantity: "))
 			c.dropItem(itemIndex, itemQ)
+			
+		elif command == "37":
+			c.listAllPlayers()
 			
 			
 	'''
