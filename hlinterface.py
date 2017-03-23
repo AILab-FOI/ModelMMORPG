@@ -12,7 +12,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		print '%s: %s' % ( self.name.split( '@' )[ 0 ], str( msg ) )
 
 	def getInventory( self ):
-		''' Get current inventory '''
+		''' Get current inventory 
+		    Returns dictionary { itemID:itemAmount } '''
 		''' TODO: make all getters to return None if there were no changes to optimize update '''
 		try:
 			inventory = self.pb.playerInventory
@@ -27,13 +28,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		return { 'maggot slime':( '085-1', 125, 142 ), 'bug leg':( '085-1', 122, 132 ) }
 
 	def getVisibleMobs( self ):
-		''' Dummy visible mobs until lli is done '''
+		''' Get visible mobs 
+		    Returns dictionary { mob_being_ID:( mobtype, mapID, X, Y ) } '''
 		try:
 			mobs = self.pb.monsterMovements
-			print mobs
+			mobs = dict( [ ( i, ( k[ -1 ][ 0 ], self.pb.playerMap, k[ -1 ][ 1 ], k[ -1 ][ 2 ] ) ) for i, k in mobs.items() ] )
+			return mobs
 		except:
-			pass
-		return { 'maggot':( '085-1', 125, 142 ), 'black scorpion':( '085-1', 122, 132 ) }
+			return None
 
 	def getVisibleNPCs( self ):
 		''' Dummy visible NPCs until lli is done '''
@@ -44,11 +46,12 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		return { 'Bogdan':( '085-1', 125, 142 ), 'Igor':( '085-1', 122, 132 ) }
 
 	def getMyLocation( self ):
-		''' Get player location '''
+		''' Get player location 
+		    Returns tuple ( mapID, X, Y ) '''
 		try:
-			location = ( self.pb.playerMap, self.pb.playerPosX, self.pb.playerPosY )
-			if location[ 0 ]:
-				return location
+			self.location = ( self.pb.playerMap, self.pb.playerPosX, self.pb.playerPosY )
+			if self.location[ 0 ]:
+				return self.location
 		except:
 			return None
 
@@ -57,7 +60,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		return { 'Sorfina': [ 'Hello!', 'Put on a shirt!' ], 'Tanisha': [ 'Can you take care of the maggots?', 'Go outside!' ] }
 
 	def interpretNPCMessage( self, npc, message ):
-		''' Interpret NPC messages '''
+		''' Interpret NPC messages 
+		    Returns tuple ( waiting_quest( npc, %s, quest_name ), quest_name ) 
+		    The first element in the tuple is a string Prolog predicate 
+		    for the knowledge base where %s is a place to insert the agent's 
+		    character name '''
 		if npc == 'Sorfina':
 			if message == 'Put on a shirt!':
 				return "waiting_quest( '" + npc + "', '%s', tutorial )", "tutorial"
@@ -124,8 +131,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			inv = self.getInventory()
 			if inv:
 				for itemid, amount in inv.items():
-					delete_predicate = "retract( ownership( '%s', '%s', _ ) )" % ( self.avatar_name, itemid )
-					update_predicate = "assert( ownership( '%s', '%s', %d ) )" % ( self.avatar_name, itemid, amount )
+					delete_predicate = "retract( ownership( '%s', %s, _ ) )" % ( self.avatar_name, itemid )
+					update_predicate = "assert( ownership( '%s', %s, %d ) )" % ( self.avatar_name, itemid, amount )
 					self.say( 'Updating knowledge base with: ' + update_predicate )
 					self.kb.ask( delete_predicate )
 					self.kb.ask( update_predicate )
@@ -137,9 +144,9 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			# First delete all known locations
 			delete_predicate = "retract( location( _, _, _, _ ) )"
 			self.kb.ask( delete_predicate )
-			for mob, loc in mobs.items():
-				mapname, x, y = loc
-				update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( mob, mapname, x, y )
+			for loc in mobs.values():
+				mob, mapname, x, y = loc
+				update_predicate = "assert( location( %s, '%s', %d, %d ) )" % ( mob, mapname, x, y )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( update_predicate )
 
