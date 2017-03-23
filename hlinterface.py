@@ -31,19 +31,27 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def getVisibleItems( self ):
 		''' Get visible (dropped) items
 		    Returns dictionary { itemID: ( amount, mapID, X, Y ) } '''
+		if not hasattr( self, 'droppeditems_cache' ):
+			self.droppeditems_cache = None
 		try:
-			items = self.pb.droppedItems
-			items = dict( [ ( i[ 0 ], ( i[ 3 ], self.pb.playerMap, i[ 1 ], i[ 2 ] ) ) for i in item ] )
-			return
+			if self.droppeditems_cache == self.pb.droppedItems:
+				return None
+			self.droppeditems_cache = self.pb.droppedItems
+			items = dict( [ ( i[ 0 ], ( i[ 3 ], self.pb.playerMap, i[ 1 ], i[ 2 ] ) ) for i in self.droppeditems_cache ] )
+			return items
 		except:
 			return {}
 
 	def getVisibleMobs( self ):
 		''' Get visible mobs 
 		    Returns dictionary { mob_being_ID:( mobtype, mapID, X, Y ) } '''
+		if not hasattr( self, 'mobs_cache' ):
+			self.mobs_cache = None
 		try:
-			mobs = self.pb.monsterMovements
-			mobs = dict( [ ( i, ( k[ -1 ][ 0 ], self.pb.playerMap, k[ -1 ][ 1 ], k[ -1 ][ 2 ] ) ) for i, k in mobs.items() ] )
+			if self.mobs_cache == self.pb.monsterMovements:
+				return None
+			self.mobs_cache = self.pb.monsterMovements
+			mobs = dict( [ ( i, ( k[ -1 ][ 0 ], self.pb.playerMap, k[ -1 ][ 1 ], k[ -1 ][ 2 ] ) ) for i, k in self.mobs_cache.items() ] )
 			return mobs
 		except:
 			return None
@@ -59,12 +67,18 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def getMyLocation( self ):
 		''' Get player location 
 		    Returns tuple ( mapID, X, Y ) '''
+		if not hasattr( self, 'location' ):
+			self.location = None
 		try:
+			if self.location == ( self.pb.playerMap, self.pb.playerPosX, self.pb.playerPosY ):
+				return None
 			self.location = ( self.pb.playerMap, self.pb.playerPosX, self.pb.playerPosY )
 			if self.location[ 0 ]:
 				return self.location
+			else:
+				return ()
 		except:
-			return None
+			return ()
 
 	def getNewNPCMessages( self ):
 		''' Dummy NPC messages until lli is done '''
@@ -128,7 +142,12 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			if not hasattr( self, 'char_cache' ):
 				self.char_cache = None
 
-			if self.char_cache != self.character_list[ self.character ]:
+			try:
+				test = self.char_cache.__dict__ != self.character_list[ self.character ].__dict__
+			except:
+				test = True
+
+			if test:
 				self.char_cache = self.character_list[ self.character ]
 				self.avatar_name = self.char_cache.name
 				for token, value in self.char_cache.__dict__.items():
@@ -161,13 +180,18 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'Updating visible mobs ...' )
 			mobs = self.getVisibleMobs()
 			# First delete all known locations
-			delete_predicate = "retract( location( _, _, _, _ ) )"
-			self.kb.ask( delete_predicate )
-			for loc in mobs.values():
-				mob, mapname, x, y = loc
-				update_predicate = "assert( location( %s, '%s', %d, %d ) )" % ( mob, mapname, x, y )
-				self.say( 'Updating knowledge base with: ' + update_predicate )
-				self.kb.ask( update_predicate )
+			if mobs:
+				delete_predicate = "retract( location( _, _, _, _ ) )"
+				self.kb.ask( delete_predicate )
+				for loc in mobs.values():
+					mob, mapname, x, y = loc
+					update_predicate = "assert( location( %s, '%s', %d, %d ) )" % ( mob, mapname, x, y )
+					self.say( 'Updating knowledge base with: ' + update_predicate )
+					self.kb.ask( update_predicate )
+			elif mobs == None:
+				self.say( 'No changes in visible mobs ...' )
+			else:
+				self.say( 'No critters creeping around ...' )
 
 			self.say( 'Updating visible NPCs ...' ) # NOTE: NPCs should be stored permanentnly with an additional predicate
 			npcs = self.getVisibleNPCs()
@@ -193,6 +217,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 					update_predicate = "assert( location( '%s', %d, '%s', %d, %d ) )" % ( item, amount, mapname, x, y )
 					self.say( 'Updating knowledge base with: ' + update_predicate )
 					self.kb.ask( update_predicate )
+			elif itms == None:
+				self.say( 'No changes in visible items ...' )
 			else:
 				self.say( 'No items lying around at this location ...' )
 
@@ -204,6 +230,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				update_predicate = "assert( location( '%s', '%s', %s, %s ) )" % ( self.avatar_name, mapname, x, y )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( update_predicate )
+			elif location == None:
+				self.say( "I didn't change my location ..." )
 			else:
 				self.say( 'Location unknown ...' )
 
