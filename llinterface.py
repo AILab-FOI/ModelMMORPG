@@ -306,6 +306,8 @@ class PacketBuffer( threading.Thread ):
 		
 		self.monsterMovements = {}
 		
+		self.talkingToNPC = None
+		
 
 	def updatePlayerData (self, slots):
 		self.playerSlots = slots
@@ -334,10 +336,14 @@ class PacketBuffer( threading.Thread ):
 				# MONSTER MOVEMENTS (id, x, y)
 				self.monsterMovements = Packet.critterMovements
 				
+				# Player is talking to NPC with name:
+				self.talkingToNPC = Packet.talkingWithNPC
+				
 				#debug (self.playerMap, self.playerPosX, self.playerPosY)
 				#debug ("\n\npacket created\n\n")
 				#debug (self.droppedItems)
-				debug (self.monsterMovements)
+				#debug (self.monsterMovements)
+				debug (self.talkingToNPC)
 								
 				self.packets.append( packet )
 				#debug( "\n\n" )
@@ -467,6 +473,8 @@ class Packet:
 	playerEquipment = {}
 	
 	playerSlots = {}
+	
+	talkingWithNPC = None
 	
 	
 	
@@ -649,6 +657,8 @@ class Packet:
 			self.x = struct.unpack( "<B", self.data[ 18 ] )[ 0 ]
 			self.y = struct.unpack( "<B", self.data[ 20 ] )[ 0 ]
 		
+		
+		
 		elif self.type == 'SMSG_ITEM_DROPPED':
 			
 			Packet.droppedItemObjectID = struct.unpack ("<L", self.data[2:6])[0]
@@ -670,6 +680,7 @@ class Packet:
 			debug( "\n" )
 			debug( Packet.droppedItemDict )
 	
+		
 		
 		elif self.type == 'SMSG_PLAYER_INVENTORY_ADD': # WORKS
 			
@@ -727,6 +738,8 @@ class Packet:
 				for i in Packet.playerSlots:
 					debug (i, Packet.playerSlots[i].itemID, Packet.playerSlots[i].itemAmount)
 
+		
+		
 		elif self.type == 'SMSG_ITEM_REMOVE':
 			debug( "\n -- item removed from map!" )
 			droppedItemID = struct.unpack ("<L", self.data[-4:])[0]
@@ -868,6 +881,7 @@ class Packet:
 			# debug (" \n\n\nNAME DETECTED \n\n\n ")
 	
 			
+		
 		elif self.type == 'SMSG_PLAYER_INVENTORY':
 			debug( "\n\nINVENTORY DETECTED: \n" )
 			inventory = self.data[4:]
@@ -890,6 +904,7 @@ class Packet:
 				inventory = inventory [18:]
 			
 						
+		
 		elif self.type == 'SMSG_PLAYER_EQUIPMENT':
 			debug( "\n\nEQUIPMENT DETECTED: \n" )
 			equipment = self.data[4:]
@@ -911,6 +926,7 @@ class Packet:
 				equipment = equipment [20:]
 			
 			
+		
 		elif self.type == 'SMSG_WALK_RESPONSE': # CLIENT JOZEK CAN'T DETECT PACKAGE WHEN IGOR MOVES
 			
 			x_1 = struct.unpack ("<B", self.data[8])[0]
@@ -930,6 +946,7 @@ class Packet:
 			# debug( "I moved to %d, %d" %(x,y) )
 			
 			
+		
 		elif self.type == 'SMSG_NPC_MESSAGE' or self.type == 'SMSG_NPC_CHOICE': 
 			
 			npcID = struct.unpack( "<L", self.data[ 4:8 ] )[0]
@@ -938,17 +955,39 @@ class Packet:
 			npcMessage = self.data[ 8: ]
 			debug( "\n\n"  )
 			debug( npcMessage )
+			
+			if re.match (".*[a-zA-Z0-9]*\[[a-zA-Z0-9]*\]", self.data) is not None:
+				#~ print "NPC name:"
+				chat = list(self.data)
+				pos1 = chat.index("[")
+				del chat[:pos1+1]
+				pos2 = chat.index("]")
+				del chat [pos2:]
+				chat = "".join(chat)
+				#~ debug (chat)
+				Packet.talkingWithNPC = chat
+				
+				
+				
+			#~ else:
+				#~ debug("NPC name not found")
 		
 		#elif self.type == 'SMSG_NPC_CHOICE':
 			#npcMessageQuery = self.data[ 8: ]
 			#debug( "\n\nChoose answer\n\n" )
 			#debug( npcMessageQuery )
 			
+		elif self.type == 'SMSG_NPC_CLOSE':
+			#~ debug ("CLOSING NPC COMMUNICATION")
+			Packet.talkingWithNPC = None
+			
+			
 		elif self.type == 'SMSG_PARTY_INVITED':
 			Packet.whoInvites = struct.unpack( "<L", self.data[ 2:6 ] )[0]
 			whichParty = self.data[ 6: ]
 			debug( "\nYou got an invitation from %s to join party %s " %(Packet.whoInvites, whichParty) )
 					
+		
 		elif self.type == 'SMSG_PARTY_MESSAGE':
 			partyMessageSender = struct.unpack( "<L", self.data[ 4:8 ] )[0]
 			partyMesageTxt = self.data[ 8: ]
@@ -963,6 +1002,7 @@ class Packet:
 			
 		# elif self.type == 'SMSG_PLAYER_SKILLS':
 			# debug (" \n\n\nSTATUS CHANGE DETECTED \n\n\n ")
+		
 		
 		elif self.type == 'SMSG_BEING_CHANGE_LOOKS2': # WORKS, extracting the player ID
 			self.myID =  struct.unpack( "<L", self.data[ 2:6 ] )[0]
