@@ -321,6 +321,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			sys.exit()
 
 		try:		
+			self.kb.ask( "['npc-db.pl']" )
+			self.say( 'NPC knowledge base loaded!' )
+		except:
+			self.say( 'Error while loading NPC knowledge base, aborting!' )
+			import sys
+			sys.exit()
+
+		try:		
 			self.say( 'Map knowledge base loading in background!' )
 			self.kb.ask( "['tmwmap.P']" )
 		except:
