@@ -15,10 +15,15 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		''' Get current inventory 
 		    Returns dictionary { itemID:itemAmount } '''
 		''' TODO: make all getters to return None if there were no changes to optimize update '''
+		if not hasattr( self, 'inventory_cache' ):
+			self.inventory_cache = None
 		try:
-			inventory = self.pb.playerInventory
+			if self.inventory_cache == self.pb.playerInventory:
+				return None # No changes in inventory
+			else:
+				self.inventory_cache = self.pb.playerInventory
 			if inventory:
-				inv = dict( [ ( i.itemID, i.itemAmount ) for i in inventory.values() ] )
+				inv = dict( [ ( i.itemID, i.itemAmount ) for i in self.inventory_cache.values() ] )
 				return inv
 		except:
 			return {}
@@ -120,17 +125,23 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		
 		if self.character_list:
 			self.say( 'Updating my stats ...' )
-			char = self.character_list[ self.character ]
-			self.avatar_name = char.name
-			for token, value in char.__dict__.items():
-				delete_predicate = "retract( ownership( '%s', '%s', _ ) )" % ( self.avatar_name, token )
-				if type( value ) == int:
-					update_predicate = "assert( ownership( '%s', '%s', %d ) )" % ( self.avatar_name, token, value )
-				else:
-					update_predicate = "assert( ownership( '%s', '%s', '%s' ) )" % ( self.avatar_name, token, str( value ) )
-				self.say( 'Updating knowledge base with: ' + update_predicate )
-				self.kb.ask( delete_predicate )
-				self.kb.ask( update_predicate )
+			if not hasattr( self, 'char_cache' ):
+				self.char_cache = None
+
+			if self.char_cache != self.character_list[ self.character ]:
+				self.char_cache = self.character_list[ self.character ]
+				self.avatar_name = self.char_cache.name
+				for token, value in self.char_cache.__dict__.items():
+					delete_predicate = "retract( ownership( '%s', '%s', _ ) )" % ( self.avatar_name, token )
+					if type( value ) == int:
+						update_predicate = "assert( ownership( '%s', '%s', %d ) )" % ( self.avatar_name, token, value )
+					else:
+						update_predicate = "assert( ownership( '%s', '%s', '%s' ) )" % ( self.avatar_name, token, str( value ) )
+					self.say( 'Updating knowledge base with: ' + update_predicate )
+					self.kb.ask( delete_predicate )
+					self.kb.ask( update_predicate )
+			else:
+				self.say( 'No changes in my stats ...' )
 
 			self.say( 'Updating my inventory ...' )
 			
@@ -142,6 +153,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 					self.say( 'Updating knowledge base with: ' + update_predicate )
 					self.kb.ask( delete_predicate )
 					self.kb.ask( update_predicate )
+			elif inv == None:
+				self.say( 'No changes in inventory ...' )
 			else:
 				self.say( 'Inventory not loaded yet ...' )
 
