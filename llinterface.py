@@ -315,6 +315,8 @@ class PacketBuffer( threading.Thread ):
 		
 		self.gameParties = {}
 		
+		self.npcMessage = None
+		
 
 	def updatePlayerData (self, slots):
 		self.playerSlots = slots
@@ -352,13 +354,17 @@ class PacketBuffer( threading.Thread ):
 				# In-game current parties
 				self.gameParties = Packet.parties
 				
+				# Message from NPC
+				self.npcMessage = Packet.npcIncomingMessage
+				
 				#debug (self.playerMap, self.playerPosX, self.playerPosY)
 				#debug ("\n\npacket created\n\n")
 				#debug (self.droppedItems)
 				#debug (self.monsterMovements)
 				#debug (self.talkingToNPC)
 				#debug (self.loggedInPlayers)
-				debug (self.gameParties)
+				#debug (self.gameParties)
+				debug (self.npcMessage)
 								
 				self.packets.append( packet )
 				#debug( "\n\n" )
@@ -496,6 +502,8 @@ class Packet:
 	loggedInPlayers = []
 	
 	parties = {}
+	
+	npcIncomingMessage = None
 	
 	whoInvites = None
 	
@@ -992,6 +1000,7 @@ class Packet:
 			debug( "Getting message from NPC with ID:" )
 			debug( npcID )
 			npcMessage = self.data[ 8: ]
+			Packet.npcIncomingMessage = npcMessage
 			debug( "\n\n"  )
 			debug( npcMessage )
 			
