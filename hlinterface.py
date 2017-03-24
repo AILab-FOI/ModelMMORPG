@@ -312,22 +312,34 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		time.sleep( 1 )
 
 	class Login( spade.Behaviour.OneShotBehaviour ):
+		''' Login to TMW server and locate the player '''
 		def _process( self ):
 			login_complete = False
 			while not login_complete:
 				self.myAgent.login()
-
 				time.sleep( 1 )
 				self.myAgent.pb.go()
-			
-				self.myAgent.locatePlayer()
-
+				counter = 0
 				while not self.myAgent.pb.hasNew():
 					time.sleep( 0.1 )
-				
-				if not self.myAgent.pb.playerMap:
+					counter += 1
+					if counter > 10:
+						break
+
+				if counter >= 10:
 					continue
-				
+
+				try:		
+					self.myAgent.locatePlayer()
+				except:
+					continue
+
+				time.sleep( 1 )
+	
+				if not self.myAgent.pb.playerMap:
+					print 10
+					continue
+
 				login_complete = True
 
 	class Reason( spade.Behaviour.Behaviour ):

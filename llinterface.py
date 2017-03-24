@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 
 import socket
+socket.setdefaulttimeout( 2 )
 import struct
 import time
 import threading
