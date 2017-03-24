@@ -1299,7 +1299,8 @@ class Connection:
 
 	def NPCNextDialog( self, NPC ):
 		'''Get the next dialog from an NPC. NPC is the NPCs id (from the message received).'''
-		self.srv.sendall( "\xb9%s" % ( struct.pack( "<L", NPC ) ) )
+		self.srv.sendall( "\xb9\0%s" % ( struct.pack( "<L", NPC ) ) )
+		debug("NEXT sent...")
 	
 	def createParty (self, partyName): # WORKS
 		self.srv.sendall( "\xF9\0%s" % partyName.ljust(24, '\0'))
@@ -1526,6 +1527,7 @@ if __name__ == '__main__':
 		debug( "35. Show (*initial*) Player Slots" )
 		debug( "36. Drop item" )
 		debug( "37. List all logged in players with their position")
+		debug( "38. Send NEXT in dialog with NPC")
 		
 		debug( 67 * "-" )
 		
@@ -1683,6 +1685,9 @@ if __name__ == '__main__':
 		elif command == "37":
 			c.listAllPlayers()
 			
+		elif command == "38":
+			npcID = int(raw_input("Enter NPC id: "))
+			c.NPCNextDialog(npcID)
 			
 	'''
 	for i, j in zip( range( 50, 90 ), range( 50, 90 ) ): 
