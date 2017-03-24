@@ -311,6 +311,9 @@ class PacketBuffer( threading.Thread ):
 		self.detectedNPClist = []
 		
 		self.loggedInPlayers = None
+		
+		self.gameParties = {}
+		
 
 	def updatePlayerData (self, slots):
 		self.playerSlots = slots
@@ -345,12 +348,16 @@ class PacketBuffer( threading.Thread ):
 				# List all logged in players
 				self.loggedInPlayers = Packet.loggedInPlayers
 				
+				# In-game current parties
+				self.gameParties = Packet.parties
+				
 				#debug (self.playerMap, self.playerPosX, self.playerPosY)
 				#debug ("\n\npacket created\n\n")
 				#debug (self.droppedItems)
 				#debug (self.monsterMovements)
 				#debug (self.talkingToNPC)
-				debug (self.loggedInPlayers)
+				#debug (self.loggedInPlayers)
+				debug (self.gameParties)
 								
 				self.packets.append( packet )
 				#debug( "\n\n" )
@@ -486,6 +493,8 @@ class Packet:
 	npcDetectedName  = []
 	
 	loggedInPlayers = []
+	
+	parties = {}
 	
 	whoInvites = None
 	
@@ -805,6 +814,7 @@ class Packet:
 				
 				if (self.data[4:]) not in Packet.loggedInPlayers:
 					Packet.loggedInPlayers.append(self.data[4:])
+				#~ debug (Packet.loggedInPlayers)
 				
 				
 			#else:
@@ -1016,6 +1026,44 @@ class Packet:
 			whichParty = self.data[ 6: ]
 			debug( "\nYou got an invitation from %s to join party %s " %(Packet.whoInvites, whichParty) )
 					
+					
+					
+					
+		elif self.type == 'SMSG_PARTY_INFO': # SCRIPT DOES NOT ALWAYS REGISTER THIS PACKET!
+			
+			debug ("PARTY UPDATE")
+			partyName = self.data[4:28]
+			partyName = re.sub('\x00', '', partyName)
+			members = []
+			debug ("party %s updated" %partyName)
+			
+			partyMembers = self.data[28:]
+			
+			while (partyMembers):
+				memberName = partyMembers[4:28]
+				memberName = re.sub('\x00', '', memberName)
+				members.append(memberName)
+				partyMembers = partyMembers [46:]
+				#debug (memberName)
+				#debug (Packet.parties)
+				
+			Packet.parties[partyName] = members
+			debug (Packet.parties)
+		
+		
+		elif self.type == 'SMSG_PARTY_LEAVE':
+			leaving = self.data[6:]
+			leaving = re.sub('\x00', '', leaving)
+			debug ("leaving party: %s" %leaving)
+			
+			for k in Packet.parties.itervalues():
+				try:
+					k.remove(leaving)
+					debug ("party left")
+				except ValueError:
+					pass
+				
+			
 		
 		elif self.type == 'SMSG_PARTY_MESSAGE':
 			partyMessageSender = struct.unpack( "<L", self.data[ 4:8 ] )[0]
@@ -1467,7 +1515,7 @@ if __name__ == '__main__':
 		debug( "34. Show (*initial*) Player Equipment" )
 		debug( "35. Show (*initial*) Player Slots" )
 		debug( "36. Drop item" )
-		debug( "37. List all logged in characters with their position")
+		debug( "37. List all logged in players with their position")
 		
 		debug( 67 * "-" )
 		
