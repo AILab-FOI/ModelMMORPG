@@ -1717,7 +1717,7 @@ if __name__ == '__main__':
 
 		elif command == "39":
 			character = raw_input("Enter your nickname: ")
-			other = raw_input("Whom do you seek (leave blank for all)?: ")
+			other = raw_input("Whose membership do you want to test?: ")
 			c.partyStatus( character, other )
 					
 			
