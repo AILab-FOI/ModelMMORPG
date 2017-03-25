@@ -57,7 +57,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def getVisibleNPCs( self ):
 		''' Get visible NPCs (e.g. NPCs on the same map) 
-		    returns dict { NPC name:( Map, X, Y, NPC ID ) }'''
+		    returns dict { NPC name:( Map, X, Y, NPC type ) }'''
 		if not hasattr( self, 'location' ) or self.location == None:
 			return {}
 		if not hasattr( self, 'map_cache' ):
@@ -65,11 +65,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		if self.map_cache == self.location[ 0 ]:
 			return None # I'm still on the same map, so the NPCs are the same
 		self.map_cache = self.location[ 0 ]
-		res = self.kb.ask( "npc( ID, Name, '%s', X, Y )" % self.location[ 0 ] )
+		res = self.kb.ask( "npc( Type, Name, '%s', X, Y )" % self.location[ 0 ] )
 		NPCs = {}
 		for r in res:
 			if not 'Debug' in r[ 'Name' ]:
-				NPCs[ r[ 'Name' ] ] = ( self.location[ 0 ], r[ 'X' ], r[ 'Y' ], r[ 'ID' ] )
+				NPCs[ r[ 'Name' ] ] = ( self.location[ 0 ], r[ 'X' ], r[ 'Y' ], r[ 'Type' ] )
 		return NPCs
 
 	def getVisiblePlayers( self ):

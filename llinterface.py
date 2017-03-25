@@ -1047,7 +1047,7 @@ class Packet:
 			
 		
 		elif self.type == 'SMSG_NPC_CLOSE':
-			#~ debug ("CLOSING NPC COMMUNICATION")
+			debug ("CLOSING NPC COMMUNICATION")
 			Packet.talkingWithNPC = None
 			
 			
