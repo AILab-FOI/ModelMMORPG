@@ -13,6 +13,9 @@ import select
 import os
 	
 
+findp_re = re.compile( r'Name: ([^\(]+) .* ?\| Location: ([0-9]+[-][0-9]+) ([0-9]+) ([0-9]+)' )
+findpp_re = re.compile( r"Name: ([^\(]+) .* ?\| Party: [\'](.*)[\']" )
+
 DEBUG = True
 CHARACTER = None
 
@@ -317,6 +320,8 @@ class PacketBuffer( threading.Thread ):
 		self.gameParties = {}
 		
 		self.npcMessage = None
+
+		self.playerParty = {}
 		
 
 	def updatePlayerData (self, slots):
@@ -357,6 +362,9 @@ class PacketBuffer( threading.Thread ):
 				
 				# Message from NPC
 				self.npcMessage = Packet.npcIncomingMessage
+
+				# Party memberships
+				self.playerParty = Packet.playerParty
 				
 				#debug (self.playerMap, self.playerPosX, self.playerPosY)
 				#debug ("\n\npacket created\n\n")
@@ -507,6 +515,8 @@ class Packet:
 	npcIncomingMessage = None
 	
 	whoInvites = None
+
+	playerParty = {}
 	
 	
 	
@@ -783,6 +793,7 @@ class Packet:
 		elif self.type == 'SMSG_PLAYER_CHAT':
 			
 			# debug("CHAT") # testing the packet identification
+			# debug( self.data )
 			
 			if re.match (".*[a-zA-Z0-9]+\:\ [0-9]+\-[0-9]\ \([0-9]+\,[0-9]+", self.data) is not None:
 				debug( "\n\nIncoming coordinates found!" )
@@ -818,20 +829,24 @@ class Packet:
 				Packet.chatCoordinates_y = "".join(Packet.chatCoordinates[pos+1:])
 				debug( "Coordinates Y: %s" %Packet.chatCoordinates_y )
 			
-			elif "Name: " in self.data:
+			elif findp_re.match( self.data[4:] ):
 				#~ debug ("-- ALL PLAYERS LOCATED --")
 				#~ debug (self.data[4:])
-
-				findp_re = re.compile( r'Name: ([^\(]+) .* ?\| Location: ([0-9]+[-][0-9]+) ([0-9]+) ([0-9]+)' )
-				
-				#~ debug( findp_re.findall( self.data[4:] ) )
-
 				plname, plmap, plx, ply = findp_re.findall( self.data[4:] )[ 0 ]
 
 				Packet.loggedInPlayers[ plname ] = ( plmap, plx, ply )
 				
 				#~ debug ( 'Hmmm.... ' + str( Packet.loggedInPlayers ) )
-				
+			
+			
+			elif findpp_re.match( self.data[4:] ):
+				#debug ("-- PLAYER PARTY DETECTED --")
+
+				plname, party = findpp_re.findall( self.data[4:] )[ 0 ]
+
+				Packet.playerParty[ plname ] = party
+
+				#debug( Packet.playerParty )
 				
 			#else:
 				#debug( "\n\nnon-coordinates chat inbound: %s" %self.data )
@@ -1346,6 +1361,9 @@ class Connection:
 	def whereAnyone (self, hunter, victim): # Works for Jozek -> igor
 		self.srv.sendall( "\x8c\x00\x18\x00%s : @where %s\x00" %(hunter, victim))
 		
+	def partyStatus (self, character, other):
+		self.srv.sendall( "\x8c\x00\x18\x00%s : @whogroup %s\x00" %(character, other))
+		
 	def goToDroppedItem (self):
 		debug( "\n\n" )
 		dIOID = Packet.droppedItemObjectID[0]
@@ -1535,6 +1553,7 @@ if __name__ == '__main__':
 		debug( "36. Drop item" )
 		debug( "37. List all logged in players with their position")
 		debug( "38. Send NEXT in dialog with NPC")
+		debug( "39. Get PARTY status")
 		
 		debug( 67 * "-" )
 		
@@ -1695,6 +1714,13 @@ if __name__ == '__main__':
 		elif command == "38":
 			npcID = int(raw_input("Enter NPC id: "))
 			c.NPCNextDialog(npcID)
+
+		elif command == "39":
+			character = raw_input("Enter your nickname: ")
+			other = raw_input("Whom do you seek (leave blank for all)?: ")
+			c.partyStatus( character, other )
+					
+			
 			
 	'''
 	for i, j in zip( range( 50, 90 ), range( 50, 90 ) ): 

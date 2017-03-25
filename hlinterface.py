@@ -61,7 +61,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		return { 'Sorfina':( '085-1', 125, 142 ), 'Tanisha':( '085-1', 122, 132 ) }
 
 	def getVisiblePlayers( self ):
-		''' Get visible (all) players '''
+		''' Get visible (all) players
+		    Returns dict { character_name:( Map, X, Y ) } '''
 		if not hasattr( self, 'players_cache' ):
 			self.players_cache = None
 		try:
@@ -125,8 +126,20 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			return 0
 
 	def getPartyMembership( self ):
-		''' Dummy party membership until lli is done '''
-		return None # None if no membership, else name of party
+		''' Get party membership
+		    Raturns string party name (-1 if no party, None if no change) '''
+		if not hasattr( self, 'party_cache' ):
+			self.party_cache = None
+		try:
+			self.partyStatus( self.avatar_name, self.avatar_name )
+			time.sleep( 1 )
+			if self.party_cache == self.pb.playerParty[ self.avatar_name ]:
+				return None			
+			self.party_cache = self.pb.playerParty[ self.avatar_name ]
+			return self.party_cache
+		except:
+			return None
+		return -1
 
 	def getSocialNetwork( self ):
 		''' Dummy social network until lli is done '''
@@ -275,14 +288,16 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 			self.say( 'Updating my party membership ...' )
 			party = self.getPartyMembership()
-			if party:
+			if party == -1:
+				self.say( 'I am no party member ...' )
+			elif party == None:
+				self.say( 'No change in party membership ...' )
+			else:				
 				delete_predicate = "retract( party( '%s', _ ) )" % self.avatar_name
 				update_predicate = "assert( party( '%s', '%s' ) )" % ( self.avatar_name, party )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( delete_predicate )
 				self.kb.ask( update_predicate )
-			else:
-				self.say( 'I am no party member ...' )
 
 			self.say( 'Updating my social network ...' )
 			soc_net = self.getSocialNetwork()
