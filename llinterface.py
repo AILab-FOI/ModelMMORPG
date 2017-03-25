@@ -2,7 +2,8 @@
 #-*- coding: utf-8 -*-
 
 import socket
-socket.setdefaulttimeout( 2 )
+if not __name__ == '__main__':
+	socket.setdefaulttimeout( 2 )
 import struct
 import time
 import threading
@@ -311,7 +312,7 @@ class PacketBuffer( threading.Thread ):
 		
 		self.detectedNPClist = []
 		
-		self.loggedInPlayers = None
+		self.loggedInPlayers = {}
 		
 		self.gameParties = {}
 		
@@ -499,7 +500,7 @@ class Packet:
 	
 	npcDetectedName  = []
 	
-	loggedInPlayers = []
+	loggedInPlayers = {}
 	
 	parties = {}
 	
@@ -820,10 +821,16 @@ class Packet:
 			elif "Name: " in self.data:
 				#~ debug ("-- ALL PLAYERS LOCATED --")
 				#~ debug (self.data[4:])
+
+				findp_re = re.compile( r'Name: ([^\(]+) .* ?\| Location: ([0-9]+[-][0-9]+) ([0-9]+) ([0-9]+)' )
 				
-				if (self.data[4:]) not in Packet.loggedInPlayers:
-					Packet.loggedInPlayers.append(self.data[4:])
-				#~ debug (Packet.loggedInPlayers)
+				#~ debug( findp_re.findall( self.data[4:] ) )
+
+				plname, plmap, plx, ply = findp_re.findall( self.data[4:] )[ 0 ]
+
+				Packet.loggedInPlayers[ plname ] = ( plmap, plx, ply )
+				
+				#~ debug ( 'Hmmm.... ' + str( Packet.loggedInPlayers ) )
 				
 				
 			#else:

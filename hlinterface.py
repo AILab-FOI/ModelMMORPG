@@ -61,8 +61,18 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		return { 'Sorfina':( '085-1', 125, 142 ), 'Tanisha':( '085-1', 122, 132 ) }
 
 	def getVisiblePlayers( self ):
-		''' Dummy visible players until lli is done '''
-		return { 'Bogdan':( '085-1', 125, 142 ), 'Igor':( '085-1', 122, 132 ) }
+		''' Get visible (all) players '''
+		if not hasattr( self, 'players_cache' ):
+			self.players_cache = None
+		try:
+			self.listAllPlayers()
+			time.sleep( 1 )
+			if self.players_cache == self.pb.loggedInPlayers:		
+				return None
+			self.players_cache = self.pb.loggedInPlayers
+			return self.players_cache
+		except:
+			return {}
 
 	def getMyLocation( self ):
 		''' Get player location 
@@ -203,11 +213,16 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 			self.say( 'Updating visible players ...' )
 			players = self.getVisiblePlayers()
-			for p, loc in players.items():
-				mapname, x, y = loc
-				update_predicate = "assert( location( '%s', '%s', %d, %d ) )" % ( p, mapname, x, y )
-				self.say( 'Updating knowledge base with: ' + update_predicate )
-				self.kb.ask( update_predicate )
+			if players:
+				for p, loc in players.items():
+					mapname, x, y = loc
+					update_predicate = "assert( location( '%s', '%s', %s, %s ) )" % ( p, mapname, x, y )
+					self.say( 'Updating knowledge base with: ' + update_predicate )
+					self.kb.ask( update_predicate )
+			elif players == None:
+				self.say( 'No changes in visible players ...' )
+			else:
+				self.say( 'No visible players available ...' )
 
 			self.say( 'Updating visible items ...' )
 			itms = self.getVisibleItems()
