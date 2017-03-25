@@ -2,8 +2,6 @@
 #-*- coding: utf-8 -*-
 
 import socket
-if not __name__ == '__main__':
-	socket.setdefaulttimeout( 2 )
 import struct
 import time
 import threading
@@ -338,7 +336,7 @@ class PacketBuffer( threading.Thread ):
 				packet = Packet( buff )
 				
 				# INVENTORY: 
-				self.playerInventory = packet.playerSlots
+				self.playerInventory = Packet.playerSlots
 				
 				# POSITION:
 				self.playerMap = Packet.mapID
