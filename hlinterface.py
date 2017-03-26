@@ -5,6 +5,7 @@ import spade
 from spade.SWIKB import SWIKB as KB
 import llinterface as lli
 import time
+from random import random
 
 class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def say( self, msg ):
@@ -71,7 +72,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		self.say( "Querying knowledge base with: " + query )
 		res = self.kb.ask( query )
 		NPCs = {}
-		print res
+		# TODO: Remove debug message comments
+		#print res
 		if res:
 			for r in res:
 				if r.has_key( 'Name' ):
@@ -107,6 +109,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		if not hasattr( self, 'location' ):
 			self.location = None
 		try:
+			self.locatePlayer()
+			time.sleep( 0.5 )
 			if self.location == ( self.pb.playerMap, self.pb.playerPosX, self.pb.playerPosY ):
 				return None
 			self.location = ( self.pb.playerMap, self.pb.playerPosX, self.pb.playerPosY )
@@ -124,10 +128,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		try:
 			if self.npcmsg_cache == self.pb.npcMessages:
 				return None
-			self.npcmsg_cache = self.pb.npcMessages
-			print '*'*50
-			print self.npcmsg_cache
-			print '*'*50
+			self.npcmsg_cache = [ i for i in self.pb.npcMessages ]
 			msgs = {}
 			for npcid, message in self.npcmsg_cache: 
 				if not msgs.has_key( npcid ):
@@ -144,11 +145,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		    for the knowledge base where %s is a place to insert the agent's 
 		    character name '''
 
-		''' [(110008658, '[Server/Client Notice]\x00'), (110008658, 'The explanations in this tutorial are based on the official client, Manaplus.\x00'), (110008658, "If you're using another client, settings and controls may be different.\x00"), (110008658, '[Server Game Rules]\x00'), (110008658, 'Please Select Language.\x00'), (110008658, 'English:Deutsch (German):Nederlands (Dutch):Dansk (Danish):Francais (French):Castellano (Spanish):Svenska (Swedish):Portugues (Portuguese):Polski (Polish):Italiano (Italian):\x00')]'''
 		query = "npc_id( %s, Name )" % npc
 		res = self.kb.ask( query )
 		npc = res[ 0 ][ "Name" ]
 		
+		# TODO: Also interpret other messages as possible preconditions for other actions
 		if npc == 'ServerInitial':
 			if message == '[Server/Client Notice]':
 				return "waiting_quest( 'Sorfina', '%s', tutorial )", "tutorial", "Sorfina"
@@ -215,7 +216,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'Updating my stats ...' )
 			if not hasattr( self, 'char_cache' ):
 				self.char_cache = None
-
+			
 			try:
 				test = self.char_cache.__dict__ != self.character_list[ self.character ].__dict__
 			except:
@@ -236,6 +237,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			else:
 				self.say( 'No changes in my stats ...' )
 
+
 			self.say( 'Updating my location ...' )
 			location = self.getMyLocation()
 			if location:
@@ -250,7 +252,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.say( 'Location unknown ...' )
 
 			self.say( 'Updating my inventory ...' )
-			
+			# TODO: Possibly a bug
 			inv = self.getInventory()
 			if inv:
 				for slot, j in inv.items():
@@ -268,6 +270,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			else:
 				self.say( 'Inventory not loaded yet ...' )
 
+
 			self.say( 'Updating visible mobs ...' )
 			mobs = self.getVisibleMobs()
 			# First delete all known locations
@@ -284,6 +287,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			else:
 				self.say( 'No critters creeping around ...' )
 
+			
 			self.say( 'Updating visible NPCs ...' )
 			npcs = self.getVisibleNPCs()
 			if npcs:
@@ -309,6 +313,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.say( 'No changes in visible players ...' )
 			else:
 				self.say( 'No visible players available ...' )
+
 
 			self.say( 'Updating visible items ...' )
 			itms = self.getVisibleItems()
@@ -353,7 +358,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			else:
 				self.say( 'No NPC messages arrived yet ...' )
 
-			self.say( 'Updating my party membership ...' )
+			'''self.say( 'Updating my party membership ...' )
 			party = self.getPartyMembership()
 			if party == -1:
 				self.say( 'I am no party member ...' )
@@ -364,8 +369,9 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				update_predicate = "assert( party( '%s', '%s' ) )" % ( self.avatar_name, party )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( delete_predicate )
-				self.kb.ask( update_predicate )
+				self.kb.ask( update_predicate )'''
 
+			
 			self.say( 'Updating my social network ...' )
 			soc_net = self.getSocialNetwork()
 			delete_predicate = "retract( social_network( '%s', _, _ ) )" % self.avatar_name
@@ -374,6 +380,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				update_predicate = "assert( social_network( '%s', '%s', '%s' ) )" % ( self.avatar_name, player, tag )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( update_predicate )
+
 				 
 
 	def updateObjectives( self ):
@@ -410,11 +417,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		time.sleep( 1 )
 
 	def getNextAction( self, quest ):
-		''' Derive a plan for the given quest '''
+		''' Derive the next action of the current quest '''
 		if quest == 'random_walk':
 			return [ 'randomWalk', [] ]
 		time.sleep( 1 )
-		query = "start_quest( '%s' ), next_action( _action ), do_action( _action, Action, _params ), member( Param, _params )" % quest
+		query = "next_action( _action ), do_action( _action, Action, _params ), member( Param, _params )"
 		res = self.kb.ask( query )
 		print res
 		if res:
@@ -427,28 +434,150 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'I have no idea how to solve quest "%s" ...' % quest )
 			return []
 
+	def planQuest( self, quest ):
+		''' Derive a plan and start the quest '''
+		if quest == 'random_walk':
+			return True
+		time.sleep( 1 )
+		query = "start_quest( '%s' )"  % quest
+		res = self.kb.ask( query )
+		if res:
+			return True # quest planned and started
+		else: 
+			return False # cannot plan or start quest	
+		
+
 	def act( self, action ):
 		''' Act out an action '''
-		if action[ 0 ] == 'random_walk':
-			# TODO: Implement this
+		time.sleep( 1 )
+		if action[ 0 ] == 'randomWalk':
+			# TODO: make this actually random
+			self.setDestination( 23, 24, 2 )
+			time.sleep( 1 )
 			return True
 		elif action[ 0 ] == 'answerNPC':
-			print action
-			npcID = action[ 1 ][ 0 ]
-			answer = action[ 1 ][ 1 ]
-			print npcID, answer
+			npcID = int( action[ 1 ][ 0 ] )
+			answer = int( action[ 1 ][ 1 ] )
 			try:
+				self.say( "Answering to NPC %d with %d ..." % ( npcID, answer ) )
 				self.answerToNPC( npcID, answer )
+				time.sleep( 1 )
+				return True
 			except Exception as e:
 				print e
+				return False
+		elif action[ 0 ] == 'stopTalkingToNPC':
+			npcID = int( action[ 1 ][ 0 ] )
+			try:
+				self.say( "Stopping communication with NPC %d ..." % npcID )
+				self.closeCommunication( npcID )
+				return True
+			except Exception as e:
+				print e
+				return False
+		elif action[ 0 ] == 'stopTalkingToNPCSorfina':
+			npcID = int( action[ 1 ][ 0 ] )
+			try:
+				self.say( "Stopping communication with NPC %d ..." % npcID )
+				self.closeCommunication( npcID )
+				return True
+			except Exception as e:
+				print e
+				return False
+		elif action[ 0 ] == 'talkToNPC':
+			npcID = int( action[ 1 ][ 0 ] )
+			try:
+				self.say( "Talking to NPC %d ..." % npcID )
+				self.talkToNPC( npcID )
+				return True
+			except Exception as e:
+				print e
+				return False
+		elif action[ 0 ] == 'goToNPC':
+			# TODO: implement navigation to other maps when necessary
+			npc = action[ 1 ][ 0 ]
+			mapID = action[ 1 ][ 1 ]
+			x = int( action[ 1 ][ 2 ] )
+			y = int( action[ 1 ][ 3 ] )
+			try:
+				self.say( "Going to NPC %s at location %s-%d-%d ..." % ( npc, mapID, x, y ) )
+				self.setDestination( x, y, 2 )
+				time.sleep( 2 )
+				return True
+			except Exception as e:
+				print e
+				return False
+		elif action[ 0 ] == 'goToLocation' or action[ 0 ] == 'tryToGoToLocation':
+			# TODO: implement navigation to other maps when necessary
+			mapID = action[ 1 ][ 0 ]
+			x = int( action[ 1 ][ 1 ] )
+			y = int( action[ 1 ][ 2 ] )
+			try:
+				self.say( "Going to location %s-%d-%d ..." % ( mapID, x, y ) )
+				self.setDestination( x, y, 2 )
+				time.sleep( 2 )
+				return True
+			except Exception as e:
+				print e
+				return False
+		elif action[ 0 ] == 'equipItem':
+			slot = int( action[ 1 ][ 0 ] )
+			try:
+				self.say( "Trying to equip item in slot %d ..." % ( slot ) )
+				self.itemEquip( slot )
+				time.sleep( 1 )
+				return True
+			except Exception as e:
+				print e
+				return False
 	
-			
+	
+	def actionDone( self, action ):
+		''' Test if action was successful '''
+		if action[ 0 ] == 'randomWalk':
+			return True
+		elif action[ 0 ] == 'answerNPC':
+			return True # there are no visible outcomes of this action
+		elif action[ 0 ] == 'stopTalkingToNPC' or action[ 0 ] == 'stopTalkingToNPCSorfina':
+			return True # there are no visible outcomes of this action
+		elif action[ 0 ] == 'talkToNPC':
+			return True # there are no visible outcomes of this action
+		elif action[ 0 ] == 'goToLocation':
+			time.sleep( 2 )
+			self.getMyLocation()
+			return self.location == tuple( action[ 1 ] ) # returns True if the agent has arrived
+		elif action[ 0 ] == 'tryToGoToLocation':
+			time.sleep( 1 )
+			return True # This is just a try to get the next NPC message
+		elif action[ 0 ] == 'goToNPC':
+			time.sleep( 2 )
+			self.getMyLocation()
+			print 'My location', self.location
+			print 'My destination', tuple( action[ 1 ][ 1: ] )
+			return self.location == tuple( action[ 1 ][ 1: ] ) # returns True if the agent has arrived
+		return False # Unknown action
 
-	class Login( spade.Behaviour.OneShotBehaviour ):
-		''' Login to TMW server and locate the player '''
+	def actionFailed( self ):
+		''' Tell the knowledge base that an action was unsuccessful '''
+		query = 'action_failed'
+		self.kb.ask( query )
+
+	def planDone( self, quest ):
+		''' Test if a quest has been finished '''
+		if quest == 'random_walk':
+			return True
+		query = "solved_quest( '%s' )" % quest
+		return self.kb.ask( query )
+
+	def reconsider( self ):
+		''' Is it time to reconsider my plans? '''
+		probability = 1.0 # for now never
+		reconsider = random() > probability
+		return reconsider
+
+	class Reason( spade.Behaviour.Behaviour ):
 		def _process( self ):
-			login_complete = False
-			while not login_complete:
+			while not self.myAgent.login_complete:
 				self.myAgent.login()
 				time.sleep( 1 )
 				self.myAgent.pb.go()
@@ -468,20 +597,55 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 					continue
 
 				time.sleep( 1 )
-	
+
 				if not self.myAgent.pb.playerMap:
 					continue
 
-				login_complete = True
-				# Move the agent to get the first quest
-				# TODO: Remove this later when we setup
-				# saving and loading of agent's state
-				self.myAgent.setDestination( 23, 24, 2 )
+				self.myAgent.login_complete = True
 
-	class Reason( spade.Behaviour.Behaviour ):
-		def _process( self ):
+			# Move the agent to get the first quest
+			# TODO: Remove this later when we setup
+			# saving and loading of agent's state
+			
+			'''self.myAgent.setDestination( 23, 24, 2 )
+			time.sleep( 1 )		
+			self.myAgent.answerToNPC( 110008658, 1 )
+			time.sleep( 1 )
+			self.myAgent.setDestination( 27, 27, 2 )
+			time.sleep( 2 )
+			self.myAgent.answerToNPC( 110008654, 1 )
+			time.sleep( 1 )
+			self.myAgent.answerToNPC( 110008654, 1 )
+			time.sleep( 1 )
+			self.myAgent.answerToNPC( 110008654, 1 )
+			time.sleep( 1 )
+			self.myAgent.setDestination( 33, 27, 2 )
+			time.sleep( 2 )
+			self.myAgent.setDestination( 44, 30, 2 )
+			time.sleep( 2 )
+			self.myAgent.closeCommunication( 110008655 )
+			time.sleep( 1 )
+			self.myAgent.setDestination( 29, 24, 2 )
+			time.sleep( 3 )
+			self.myAgent.talkToNPC( 110008656 )
+			time.sleep( 2 )
+			self.myAgent.closeCommunication( 110008656 )
+			time.sleep( 1 )
+			self.myAgent.itemEquip( 2 )
+			time.sleep( 1 )
+			self.myAgent.itemEquip( 3 )
+			time.sleep( 1 )
+			self.myAgent.setDestination( 27, 27, 2 )
+			time.sleep( 2 )
+			self.myAgent.talkToNPC( 110008654 )
+			time.sleep( 1 )
+			self.myAgent.closeCommunication( 110008654 )
+			time.sleep( 1 )
+			self.myAgent.setDestination( 44, 31, 2 )
+			time.sleep( 2 )'''
 			self.myAgent.say( 'Updating my knowledge base ...' )
 			self.myAgent.updateKB()
+
 			self.myAgent.say( 'Updating my objectives ...' )
 			obj = self.myAgent.updateObjectives()
 			self.myAgent.say( 'Selecting an objective ...' )
@@ -490,9 +654,76 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			else:
 				next = 'random_walk'
 			self.myAgent.say( 'Planning quest "%s" ...' % next )
-			nextAction = self.myAgent.getNextAction( next )
-			self.myAgent.say( 'My next action is "%s(%s)"' % ( nextAction[ 0 ], ','.join( nextAction[ 1 ] ) ) )
-			result = self.myAgent.act( nextAction )
+			start = self.myAgent.planQuest( next )
+			if not start:
+				self.myAgent.say( 'Cannot plan or start quest ...' )
+				return
+			planDone = False
+			while not planDone:
+				nextAction = self.myAgent.getNextAction( next )
+				self.myAgent.say( 'My next action is "%s(%s)"' % ( nextAction[ 0 ], ','.join( nextAction[ 1 ] ) ) )
+				result = self.myAgent.act( nextAction )
+				self.myAgent.say( 'I made my move, let us see if this worked ...' )
+				
+				if not result:
+					self.myAgent.say( 'Action failed miserably, need to rethink my options ...' )
+					break
+
+				retries = 3
+				success = self.myAgent.actionDone( nextAction )
+				while not success or retries == 0:
+					sleep( 1 )
+					self.myAgent.say( "Updating my knowledge base ..." )
+					self.myAgent.updateKB()
+					self.myAgent.say( "Testing if action was successful ..." )
+					success = self.myAgent.actionDone( nextAction )
+					retries -= 1
+
+				if not success:
+					self.myAgent.say( 'The action was unsuccessful, need to rethink my options ...' )
+					self.myAgent.actionFailed()
+					break # action has been unsuccessful
+
+				self.myAgent.say( 'The action was successfull!' )
+
+				try:				
+					planDone = self.myAgent.planDone( next )
+				except Exception as e:
+					print e
+					sys.exit()
+
+				if planDone:
+					self.myAgent.say( 'I finished quest "%s"! Going for the next one ...' % next )
+					break
+
+				
+				if self.myAgent.reconsider():
+					self.myAgent.say( 'It seems to be time to reconsider my options ...' )
+					self.myAgent.say( 'Updating my knowledge base ...' )
+					self.myAgent.updateKB()
+					self.myAgent.say( 'Updating my objectives ...' )
+					obj = self.myAgent.updateObjectives()
+					self.myAgent.say( 'Selecting an objective ...' )
+					if obj and obj[ 0 ][ 'Name' ] != 'random_walk':
+						newnext = self.myAgent.selectObjective( obj )
+					else:
+						newnext = 'random_walk'
+					if newnext != next:
+						self.myAgent.say( 'Planning quest "%s" ...' % next )
+						start = self.myAgent.planQuest( next )
+						if not start:
+							self.myAgent.say( 'Cannot plan or start quest ...' )
+							return
+				
+			
+
+	#class Login( spade.Behaviour.OneShotBehaviour ):
+	#	''' Login to TMW server and locate the player '''
+	#	def _process( self ):
+				
+				
+				
+				
 
 	class ChangeRole(spade.Behaviour.OneShotBehaviour):
 		"""Behaviour to change the Role of the Agent. The Agent will acquire behaviours of the needed Role."""
@@ -541,9 +772,15 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			sys.exit()'''
 
 
+		
+
+		
+
+
 	def _setup( self ):
-		login = self.Login()
-		self.addBehaviour( login )
+		#login = self.Login()
+		#self.addBehaviour( login )
+		self.login_complete = False
 
 		reason = self.Reason()
 		self.addBehaviour( reason )

@@ -1017,12 +1017,12 @@ class Packet:
 		elif self.type == 'SMSG_NPC_MESSAGE' or self.type == 'SMSG_NPC_CHOICE': 
 			
 			npcID = struct.unpack( "<L", self.data[ 4:8 ] )[0]
-			#debug( "Getting message from NPC with ID:" )
-			#debug( npcID )
+			debug( "Getting message from NPC with ID:" )
+			debug( npcID )
 			npcMessage = self.data[ 8:-1 ]
 			Packet.npcIncomingMessage.append( ( npcID, npcMessage ) )
-			#debug( "\n\n"  )
-			#debug( npcMessage )
+			debug( "\n\n"  )
+			debug( npcMessage )
 			
 			if re.match (".*[a-zA-Z0-9]*\[[a-zA-Z0-9]*\]", self.data) is not None:
 				#~ print "NPC name:"
@@ -1354,12 +1354,13 @@ class Connection:
 		listCommand = listCommand.decode("hex")
 		packetLength = len(listCommand) + 4
 		self.srv.sendall( "\x8c\0%s%s" %(struct.pack("<H", packetLength),listCommand))
-		debug("\n-- list all players command sent-- ")
+		#debug("\n-- list all players command sent-- ")
 		
 	def whereAnyone (self, hunter, victim): # Works for Jozek -> igor
 		self.srv.sendall( "\x8c\x00\x18\x00%s : @where %s\x00" %(hunter, victim))
 		
 	def partyStatus (self, character, other):
+		# TODO: For some reason everything breaks after this command is sent... Have to investigate...
 		self.srv.sendall( "\x8c\x00\x18\x00%s : @whogroup %s\x00" %(character, other))
 		
 	def goToDroppedItem (self):
@@ -1464,7 +1465,8 @@ class Connection:
 		self.srv.sendall( "\xef\x00")
 
 	def answerToNPC(self, npcID, answer):
-		self.srv.sendall( "\xb8\x00%s" % (struct.pack("<LB", npcID, answer)))
+		print self.srv.sendall( "\xb8\x00%s" % (struct.pack("<LB", npcID, answer)))
+		debug( 'Answered to NPC %d with answer %d' % ( npcID, answer ) )
 		
 	def closeCommunication(self, npcID):
 		self.srv.sendall( "\x46\x01%s" % (struct.pack("<L", npcID )))
@@ -1594,7 +1596,7 @@ if __name__ == '__main__':
 		
 		elif command == "8": 
 			
-			itemID = int(raw_input("Enter item ID: "))
+			itemID = int(raw_input("Enter item ID (slot): "))
 			c.itemEquip(itemID)	
 		
 		elif command == "9": 

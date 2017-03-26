@@ -1873,7 +1873,7 @@ npc( 0, 'ServerInitial', '029-2', 0, 1 ).
 
 npc_id( 110008658, 'ServerInitial' ).
 npc_id( 110008654, 'Sorfina' ).
-npc_id( 110008655, 'Sorfina' ). % only before going to dresser
+% npc_id( 110008655, 'Sorfina' ). % only before going to dresser
 npc_id( 110008656, 'Dresser#tutorial' ).
 npc_id( 110008663, 'Tanisha' ).
 npc_id( 110008662, 'Jessie' ).
