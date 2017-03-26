@@ -1857,6 +1857,7 @@ npc( 155, 'UndeadDebug3', '027-3', 84, 89 ).
 npc( 155, 'UndeadDebug4', '027-4', 76, 79 ).
 npc( 155, 'UndeadDebug5', '027-5', 72, 26 ).
 npc( -1, 'UnequipCB', '017-9', 0, 0 ).
+npc( 0, 'ServerInitial', '029-2', 0, 1 ).
 
 % NPC IDs (only for Candor yet)
 % WARNING: I do not know how these IDs were
@@ -1870,7 +1871,9 @@ npc( -1, 'UnequipCB', '017-9', 0, 0 ).
 % highlighted, and his details (e.g. location,
 % ID etc.) shown in the window.
 
+npc_id( 110008658, 'ServerInitial' ).
 npc_id( 110008654, 'Sorfina' ).
+npc_id( 110008655, 'Sorfina' ). % only before going to dresser
 npc_id( 110008656, 'Dresser#tutorial' ).
 npc_id( 110008663, 'Tanisha' ).
 npc_id( 110008662, 'Jessie' ).

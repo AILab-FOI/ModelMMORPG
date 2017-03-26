@@ -317,7 +317,7 @@ class PacketBuffer( threading.Thread ):
 		
 		self.gameParties = {}
 		
-		self.npcMessage = None
+		self.npcMessages = []
 
 		self.playerParty = {}
 		
@@ -359,7 +359,7 @@ class PacketBuffer( threading.Thread ):
 				self.gameParties = Packet.parties
 				
 				# Message from NPC
-				self.npcMessage = Packet.npcIncomingMessage
+				self.npcMessages = Packet.npcIncomingMessage
 
 				# Party memberships
 				self.playerParty = Packet.playerParty
@@ -371,7 +371,7 @@ class PacketBuffer( threading.Thread ):
 				#debug (self.talkingToNPC)
 				#debug (self.loggedInPlayers)
 				#debug (self.gameParties)
-				debug (self.npcMessage)
+				#debug (self.npcMessages)
 								
 				self.packets.append( packet )
 				#debug( "\n\n" )
@@ -510,7 +510,7 @@ class Packet:
 	
 	parties = {}
 	
-	npcIncomingMessage = None
+	npcIncomingMessage = []
 	
 	whoInvites = None
 
@@ -943,9 +943,9 @@ class Packet:
 		
 		
 		elif self.type == 'SMSG_BEING_NAME_RESPONSE':
-			debug (" \n\nNPC NAME DETECTED \n\n ")
+			#debug (" \n\nNPC NAME DETECTED \n\n ")
 			Packet.npcDetectedName.append(self.data[6:11])
-			debug (Packet.npcDetectedName)
+			#debug (Packet.npcDetectedName)
 	
 			
 		
@@ -1017,12 +1017,12 @@ class Packet:
 		elif self.type == 'SMSG_NPC_MESSAGE' or self.type == 'SMSG_NPC_CHOICE': 
 			
 			npcID = struct.unpack( "<L", self.data[ 4:8 ] )[0]
-			debug( "Getting message from NPC with ID:" )
-			debug( npcID )
-			npcMessage = self.data[ 8: ]
-			Packet.npcIncomingMessage = npcMessage
-			debug( "\n\n"  )
-			debug( npcMessage )
+			#debug( "Getting message from NPC with ID:" )
+			#debug( npcID )
+			npcMessage = self.data[ 8:-1 ]
+			Packet.npcIncomingMessage.append( ( npcID, npcMessage ) )
+			#debug( "\n\n"  )
+			#debug( npcMessage )
 			
 			if re.match (".*[a-zA-Z0-9]*\[[a-zA-Z0-9]*\]", self.data) is not None:
 				#~ print "NPC name:"
@@ -1047,7 +1047,7 @@ class Packet:
 			
 		
 		elif self.type == 'SMSG_NPC_CLOSE':
-			debug ("CLOSING NPC COMMUNICATION")
+			#debug ("CLOSING NPC COMMUNICATION")
 			Packet.talkingWithNPC = None
 			
 			
@@ -1308,7 +1308,7 @@ class Connection:
 	def itemPickUp (self, itemIndex): # WORKS, but need to know item index
 		self.srv.sendall( "\x9f\x00%s" % (struct.pack( "<L", itemIndex )))
 		
-	def itemEquip (self, itemID): # WORKS, but need to know item index
+	def itemEquip (self, itemID): # WORKS, but need to know item index (slot number)
 		self.srv.sendall( "\xa9\x00%s" % ( struct.pack( "<L", itemID ) ) )
 
 	def NPCChoose( self, NPC, choice ):
@@ -1551,7 +1551,8 @@ if __name__ == '__main__':
 		debug( "36. Drop item" )
 		debug( "37. List all logged in players with their position")
 		debug( "38. Send NEXT in dialog with NPC")
-		debug( "39. Get PARTY status")
+		debug( "39. Get PARTY status" )
+		debug( "40. NPC: Next dialog" )
 		
 		debug( 67 * "-" )
 		
@@ -1717,6 +1718,10 @@ if __name__ == '__main__':
 			character = raw_input("Enter your nickname: ")
 			other = raw_input("Whose membership do you want to test?: ")
 			c.partyStatus( character, other )
+
+		elif command == "40":
+			npcID = int( raw_input( "Enter NPC id:" ) )
+			c.NPCNextDialog( npcID )
 					
 			
 			

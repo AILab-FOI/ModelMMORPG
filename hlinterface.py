@@ -13,7 +13,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def getInventory( self ):
 		''' Get current inventory 
-		    Returns dictionary { itemID:itemAmount } '''
+		    Returns dictionary { itemSlot:( itemID, itemAmount ) } '''
 		''' TODO: make all getters to return None if there were no changes to optimize update '''
 		if not hasattr( self, 'inventory_cache' ):
 			self.inventory_cache = None
@@ -22,7 +22,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				return None # No changes in inventory
 			self.inventory_cache = self.pb.playerInventory
 			if self.inventory_cache:
-				inv = dict( [ ( i.itemID, i.itemAmount ) for i in self.inventory_cache.values() ] )
+				inv = dict( [ ( j, ( i.itemID, i.itemAmount ) ) for j, i in self.inventory_cache.items() ] )
 				return inv
 		except:
 			return {}
@@ -55,21 +55,33 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		except:
 			return None
 
-	def getVisibleNPCs( self ):
+	def getVisibleNPCs( self, recursion_level=0 ):
 		''' Get visible NPCs (e.g. NPCs on the same map) 
 		    returns dict { NPC name:( Map, X, Y, NPC type ) }'''
+		MAX_RECURSION = 3
 		if not hasattr( self, 'location' ) or self.location == None:
 			return {}
 		if not hasattr( self, 'map_cache' ):
 			self.map_cache = None
-		if self.map_cache == self.location[ 0 ]:
+		if self.map_cache == self.location[ 0 ] and recursion_level == 0:
 			return None # I'm still on the same map, so the NPCs are the same
 		self.map_cache = self.location[ 0 ]
-		res = self.kb.ask( "npc( Type, Name, '%s', X, Y )" % self.location[ 0 ] )
+		query = "npc( Type, Name, '%s', X, Y )" % self.location[ 0 ]
+		time.sleep( 1 )
+		self.say( "Querying knowledge base with: " + query )
+		res = self.kb.ask( query )
 		NPCs = {}
-		for r in res:
-			if not 'Debug' in r[ 'Name' ]:
-				NPCs[ r[ 'Name' ] ] = ( self.location[ 0 ], r[ 'X' ], r[ 'Y' ], r[ 'Type' ] )
+		print res
+		if res:
+			for r in res:
+				if r.has_key( 'Name' ):
+					if not 'Debug' in r[ 'Name' ]:
+						NPCs[ r[ 'Name' ] ] = ( self.location[ 0 ], r[ 'X' ], r[ 'Y' ], r[ 'Type' ] )
+		else:
+			print 'Trying again', recursion_level, MAX_RECURSION
+			if recursion_level <= MAX_RECURSION:
+				time.sleep( 1 )
+				return self.getVisibleNPCs( recursion_level + 1 )
 		return NPCs
 
 	def getVisiblePlayers( self ):
@@ -107,22 +119,45 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def getNewNPCMessages( self ):
 		''' Dummy NPC messages until lli is done '''
-		return { 'Sorfina': [ 'Hello!', 'Put on a shirt!' ], 'Tanisha': [ 'Can you take care of the maggots?', 'Go outside!' ] }
+		if not hasattr( self, 'npcmsg_cache' ):
+			self.npcmsg_cache = None
+		try:
+			if self.npcmsg_cache == self.pb.npcMessages:
+				return None
+			self.npcmsg_cache = self.pb.npcMessages
+			print '*'*50
+			print self.npcmsg_cache
+			print '*'*50
+			msgs = {}
+			for npcid, message in self.npcmsg_cache: 
+				if not msgs.has_key( npcid ):
+					msgs[ npcid ] = []
+				msgs[ npcid ].append( message )
+			return msgs
+		except:
+			return {}
 
 	def interpretNPCMessage( self, npc, message ):
 		''' Interpret NPC messages 
-		    Returns tuple ( waiting_quest( npc, %s, quest_name ), quest_name ) 
+		    Returns tuple ( waiting_quest( npc, %s, quest_name ), quest_name, npc name ) 
 		    The first element in the tuple is a string Prolog predicate 
 		    for the knowledge base where %s is a place to insert the agent's 
 		    character name '''
-		if npc == 'Sorfina':
-			if message == 'Put on a shirt!':
-				return "waiting_quest( '" + npc + "', '%s', tutorial )", "tutorial"
+
+		''' [(110008658, '[Server/Client Notice]\x00'), (110008658, 'The explanations in this tutorial are based on the official client, Manaplus.\x00'), (110008658, "If you're using another client, settings and controls may be different.\x00"), (110008658, '[Server Game Rules]\x00'), (110008658, 'Please Select Language.\x00'), (110008658, 'English:Deutsch (German):Nederlands (Dutch):Dansk (Danish):Francais (French):Castellano (Spanish):Svenska (Swedish):Portugues (Portuguese):Polski (Polish):Italiano (Italian):\x00')]'''
+		query = "npc_id( %s, Name )" % npc
+		res = self.kb.ask( query )
+		npc = res[ 0 ][ "Name" ]
+		
+		if npc == 'ServerInitial':
+			if message == '[Server/Client Notice]':
+				return "waiting_quest( 'Sorfina', '%s', tutorial )", "tutorial", "Sorfina"
+			else:
+				return False, None, "Sorfina"
+		elif npc == 'Sorfina':
+			return False, None, "Sorfina"
 		elif npc == 'Tanisha':
-			if message == 'Can you take care of the maggots?':
-				return "waiting_quest( '" + npc + "', '%s', maggots )", "maggots"
-			elif message == 'Go outside!':
-				return "waiting_quest( '" + npc + "', '%s', outside )", "outside"
+			return False, None, "Tanisha"
 		return False, None
 
 	def getQuestSignificance( self, quest ):
@@ -218,12 +253,16 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			
 			inv = self.getInventory()
 			if inv:
-				for itemid, amount in inv.items():
+				for slot, j in inv.items():
+					itemid, amount = j
 					delete_predicate = "retract( ownership( '%s', %s, _ ) )" % ( self.avatar_name, itemid )
-					update_predicate = "assert( ownership( '%s', %s, %d ) )" % ( self.avatar_name, itemid, amount )
-					self.say( 'Updating knowledge base with: ' + update_predicate )
+					update_predicate1 = "assert( ownership( '%s', %s, %d ) )" % ( self.avatar_name, itemid, amount )
+					update_predicate2 = "assert( slot( '%s', %d, %s, %d ) )" % ( self.avatar_name, slot, itemid, amount )
+					self.say( 'Updating knowledge base with: ' + update_predicate1 )
+					self.say( 'Updating knowledge base with: ' + update_predicate2 )
 					self.kb.ask( delete_predicate )
-					self.kb.ask( update_predicate )
+					self.kb.ask( update_predicate1 )
+					self.kb.ask( update_predicate2 )
 			elif inv == None:
 				self.say( 'No changes in inventory ...' )
 			else:
@@ -286,26 +325,33 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 			self.say( 'Updating NPC conversations ...' ) # not deleting old messages
 			npc_messages = self.getNewNPCMessages()
-			for npc, messages in npc_messages.items():
-				for message in messages:
-					update_predicate = "assert( npc_message( '%s', '%s', '%s' ) )" % ( self.avatar_name, npc, message )
-					self.kb.ask( update_predicate )
-					self.say( 'Updating knowledge base with: ' + update_predicate )
-					update, quest = self.interpretNPCMessage( npc, message )
-					if update:
-						if not self.kb.ask( update % self.avatar_name ): # if I haven't got this quest already
-							update_predicate = 'assert( %s )' % update % self.avatar_name
-							self.kb.ask( update_predicate )
-							self.say( 'Updating knowledge base with: ' + update_predicate )
-							sign = self.getQuestSignificance( quest )
-							update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )
-							self.kb.ask( update_predicate )
-							self.say( 'Updating knowledge base with: ' + update_predicate )
-							delete_predicate = "retract( quest_no( '%s', '%s', '%s', _ ) )" % ( npc, self.avatar_name, quest )
-							self.kb.ask( delete_predicate )
-							update_predicate = "assert( quest_no( '%s', '%s', '%s', 1 ) )" % ( npc, self.avatar_name, quest )
-							self.kb.ask( update_predicate )
-							self.say( 'Updating knowledge base with: ' + update_predicate )
+			counter = 1
+			if npc_messages:
+				for npc, messages in npc_messages.items():
+					for message in messages:
+						update, quest, npc = self.interpretNPCMessage( npc, message )
+						update_predicate = "assert( npc_message( '%s', '%s', '%s' ) )" % ( self.avatar_name, npc, message.replace( "'", "\\'" ) )
+						self.kb.ask( update_predicate )
+						self.say( 'Updating knowledge base with: ' + update_predicate )
+						if update:
+							if not self.kb.ask( update % self.avatar_name ): # if I haven't got this quest already
+								update_predicate = 'assert( %s )' % update % self.avatar_name
+								self.kb.ask( update_predicate )
+								self.say( 'Updating knowledge base with: ' + update_predicate )
+								sign = self.getQuestSignificance( quest )
+								update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )
+								self.kb.ask( update_predicate )
+								self.say( 'Updating knowledge base with: ' + update_predicate )
+								delete_predicate = "retract( quest_no( '%s', '%s', '%s', _ ) )" % ( npc, self.avatar_name, quest )
+								self.kb.ask( delete_predicate )
+								counter += 1
+								update_predicate = "assert( quest_no( '%s', '%s', '%s', %d ) )" % ( npc, self.avatar_name, quest, counter )
+								self.kb.ask( update_predicate )
+								self.say( 'Updating knowledge base with: ' + update_predicate )
+			elif npc_messages == 'None':
+				self.say( 'No new NPC messages ...' )
+			else:
+				self.say( 'No NPC messages arrived yet ...' )
 
 			self.say( 'Updating my party membership ...' )
 			party = self.getPartyMembership()
@@ -355,12 +401,48 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def selectObjective( self, objectives ):
 		''' Select most relevant objective (quest) to be solved next '''
-		quests = self.askBelieve( "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No )." % ( self.avatar_name, self.avatar_name ) )
+		query = "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No )." % ( self.avatar_name, self.avatar_name )
+		quests = self.askBelieve( query )
 		if quests:
 			next = sorted( quests, key=lambda x: x[ 'No' ] )[ 0 ][ 'Name' ]
 			self.say( 'My next objective is quest: ' + next )
 			return next
 		time.sleep( 1 )
+
+	def getNextAction( self, quest ):
+		''' Derive a plan for the given quest '''
+		if quest == 'random_walk':
+			return [ 'randomWalk', [] ]
+		time.sleep( 1 )
+		query = "start_quest( '%s' ), next_action( _action ), do_action( _action, Action, _params ), member( Param, _params )" % quest
+		res = self.kb.ask( query )
+		print res
+		if res:
+			action = [ 1, [] ]
+			for r in res:
+				action[ 0 ] = r[ 'Action' ]
+				action[ 1 ].append( r[ 'Param' ] )
+			return action
+		else:
+			self.say( 'I have no idea how to solve quest "%s" ...' % quest )
+			return []
+
+	def act( self, action ):
+		''' Act out an action '''
+		if action[ 0 ] == 'random_walk':
+			# TODO: Implement this
+			return True
+		elif action[ 0 ] == 'answerNPC':
+			print action
+			npcID = action[ 1 ][ 0 ]
+			answer = action[ 1 ][ 1 ]
+			print npcID, answer
+			try:
+				self.answerToNPC( npcID, answer )
+			except Exception as e:
+				print e
+	
+			
 
 	class Login( spade.Behaviour.OneShotBehaviour ):
 		''' Login to TMW server and locate the player '''
@@ -388,21 +470,29 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				time.sleep( 1 )
 	
 				if not self.myAgent.pb.playerMap:
-					print 10
 					continue
 
 				login_complete = True
+				# Move the agent to get the first quest
+				# TODO: Remove this later when we setup
+				# saving and loading of agent's state
+				self.myAgent.setDestination( 23, 24, 2 )
 
 	class Reason( spade.Behaviour.Behaviour ):
 		def _process( self ):
+			self.myAgent.say( 'Updating my knowledge base ...' )
 			self.myAgent.updateKB()
+			self.myAgent.say( 'Updating my objectives ...' )
 			obj = self.myAgent.updateObjectives()
+			self.myAgent.say( 'Selecting an objective ...' )
 			if obj and obj[ 0 ][ 'Name' ] != 'random_walk':
 				next = self.myAgent.selectObjective( obj )
 			else:
 				next = 'random_walk'
-			
-			# plan
+			self.myAgent.say( 'Planning quest "%s" ...' % next )
+			nextAction = self.myAgent.getNextAction( next )
+			self.myAgent.say( 'My next action is "%s(%s)"' % ( nextAction[ 0 ], ','.join( nextAction[ 1 ] ) ) )
+			result = self.myAgent.act( nextAction )
 
 	class ChangeRole(spade.Behaviour.OneShotBehaviour):
 		"""Behaviour to change the Role of the Agent. The Agent will acquire behaviours of the needed Role."""
@@ -439,13 +529,16 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			import sys
 			sys.exit()
 
+		''' TODO: Uncomment this later when random_walk is implemented
 		try:		
-			self.say( 'Map knowledge base loading in background!' )
+			self.say( 'Map knowledge base loading (this might take some time)!' )
 			self.kb.ask( "['tmwmap.P']" )
+			time.sleep( 27 )
+			self.say( 'Map knowledge base loaded!' )
 		except:
 			self.say( 'Error while loading map knowledge base, aborting!' )
 			import sys
-			sys.exit()
+			sys.exit()'''
 
 
 	def _setup( self ):
