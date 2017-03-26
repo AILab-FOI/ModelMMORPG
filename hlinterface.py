@@ -21,7 +21,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		try:
 			if self.inventory_cache == self.pb.playerInventory:
 				return None # No changes in inventory
-			self.inventory_cache = self.pb.playerInventory
+			self.inventory_cache = dict( [ ( i, j ) for i, j in self.pb.playerInventory.items() ] )
 			if self.inventory_cache:
 				inv = dict( [ ( j, ( i.itemID, i.itemAmount ) ) for j, i in self.inventory_cache.items() ] )
 				return inv
@@ -124,13 +124,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def getNewNPCMessages( self ):
 		''' Dummy NPC messages until lli is done '''
 		if not hasattr( self, 'npcmsg_cache' ):
-			self.npcmsg_cache = None
+			self.npcmsg_cache = []
 		try:
 			if self.npcmsg_cache == self.pb.npcMessages:
 				return None
-			self.npcmsg_cache = [ i for i in self.pb.npcMessages ]
+			npc_msgs = [ i for i in self.pb.npcMessages if i not in self.npcmsg_cache ]
+			self.npcmsg_cache.extend( [ i for i in npc_msgs ] )
 			msgs = {}
-			for npcid, message in self.npcmsg_cache: 
+			for npcid, message in npc_msgs: 
 				if not msgs.has_key( npcid ):
 					msgs[ npcid ] = []
 				msgs[ npcid ].append( message )
@@ -155,11 +156,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				return "waiting_quest( 'Sorfina', '%s', tutorial )", "tutorial", "Sorfina"
 			else:
 				return False, None, "Sorfina"
-		elif npc == 'Sorfina':
+		elif npc == 'Sorfina' or npc == '110008655':
 			return False, None, "Sorfina"
 		elif npc == 'Tanisha':
 			return False, None, "Tanisha"
-		return False, None
+		return False, None, None
 
 	def getQuestSignificance( self, quest ):
 		''' Hard-coded significances of various quests loosely modelled after 
@@ -329,30 +330,38 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.say( 'No items lying around at this location ...' )
 
 			self.say( 'Updating NPC conversations ...' ) # not deleting old messages
-			npc_messages = self.getNewNPCMessages()
+			try:
+				npc_messages = self.getNewNPCMessages()
+			except Exception as e:
+				print e
 			counter = 1
 			if npc_messages:
 				for npc, messages in npc_messages.items():
 					for message in messages:
-						update, quest, npc = self.interpretNPCMessage( npc, message )
-						update_predicate = "assert( npc_message( '%s', '%s', '%s' ) )" % ( self.avatar_name, npc, message.replace( "'", "\\'" ) )
-						self.kb.ask( update_predicate )
-						self.say( 'Updating knowledge base with: ' + update_predicate )
+						res = self.interpretNPCMessage( npc, message )
+						update, quest, npc = res
+						if npc:
+							update_predicate = "assert( npc_message( '%s', '%s', '%s' ) )" % ( self.avatar_name, npc, message.replace( "'", "\\'" ) )
+							self.kb.ask( update_predicate )
+							self.say( 'Updating knowledge base with: ' + update_predicate )
 						if update:
-							if not self.kb.ask( update % self.avatar_name ): # if I haven't got this quest already
-								update_predicate = 'assert( %s )' % update % self.avatar_name
-								self.kb.ask( update_predicate )
-								self.say( 'Updating knowledge base with: ' + update_predicate )
-								sign = self.getQuestSignificance( quest )
-								update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )
-								self.kb.ask( update_predicate )
-								self.say( 'Updating knowledge base with: ' + update_predicate )
-								delete_predicate = "retract( quest_no( '%s', '%s', '%s', _ ) )" % ( npc, self.avatar_name, quest )
-								self.kb.ask( delete_predicate )
-								counter += 1
-								update_predicate = "assert( quest_no( '%s', '%s', '%s', %d ) )" % ( npc, self.avatar_name, quest, counter )
-								self.kb.ask( update_predicate )
-								self.say( 'Updating knowledge base with: ' + update_predicate )
+							try:
+								if not self.kb.ask( update % self.avatar_name ): # if I haven't got this quest already
+									update_predicate = 'assert( %s )' % update % self.avatar_name
+									self.kb.ask( update_predicate )
+									self.say( 'Updating knowledge base with: ' + update_predicate )
+									sign = self.getQuestSignificance( quest )
+									update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )
+									self.kb.ask( update_predicate )
+									self.say( 'Updating knowledge base with: ' + update_predicate )
+									delete_predicate = "retract( quest_no( '%s', '%s', '%s', _ ) )" % ( npc, self.avatar_name, quest )
+									self.kb.ask( delete_predicate )
+									counter += 1
+									update_predicate = "assert( quest_no( '%s', '%s', '%s', %d ) )" % ( npc, self.avatar_name, quest, counter )
+									self.kb.ask( update_predicate )
+									self.say( 'Updating knowledge base with: ' + update_predicate )
+							except Exception as e:
+								print e
 			elif npc_messages == 'None':
 				self.say( 'No new NPC messages ...' )
 			else:
@@ -542,6 +551,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			return True # there are no visible outcomes of this action
 		elif action[ 0 ] == 'talkToNPC':
 			return True # there are no visible outcomes of this action
+		elif action[ 0 ] == 'equipItem':
+			return True # TODO: Proove this
 		elif action[ 0 ] == 'goToLocation':
 			time.sleep( 2 )
 			self.getMyLocation()
@@ -643,6 +654,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			time.sleep( 1 )
 			self.myAgent.setDestination( 44, 31, 2 )
 			time.sleep( 2 )'''
+
 			self.myAgent.say( 'Updating my knowledge base ...' )
 			self.myAgent.updateKB()
 
@@ -671,8 +683,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 				retries = 3
 				success = self.myAgent.actionDone( nextAction )
+				self.myAgent.say( "Updating my knowledge base ..." )
+				self.myAgent.updateKB()
 				while not success or retries == 0:
-					sleep( 1 )
+					time.sleep( 1 )
 					self.myAgent.say( "Updating my knowledge base ..." )
 					self.myAgent.updateKB()
 					self.myAgent.say( "Testing if action was successful ..." )
@@ -686,11 +700,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 				self.myAgent.say( 'The action was successfull!' )
 
-				try:				
+				try:
 					planDone = self.myAgent.planDone( next )
 				except Exception as e:
 					print e
-					sys.exit()
 
 				if planDone:
 					self.myAgent.say( 'I finished quest "%s"! Going for the next one ...' % next )

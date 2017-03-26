@@ -96,7 +96,7 @@ plan_quest( 'tutorial', Plan ) :-
 	A15 = goToNPC( 'Sorfina' ),
 	A16 = talkToNPC( 'Sorfina' ),
 	A17 = stopTalkingToNPC( 'Sorfina' ),
-	A18 = goToLocation( '029-2', 44, 31 ),
+	A18 = tryToGoToLocation( '029-2', 44, 31 ),
 	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
 		 a( 5, A05 ),   a( 6, A06 ),  a( 7, A07 ),  a( 8, A08 ), 
                  a( 9, A09 ),  a( 10, A10 ), a( 11, A11 ), a( 12, A12 ), 
