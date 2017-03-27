@@ -1361,7 +1361,16 @@ class Connection:
 		
 	def partyStatus (self, character, other):
 		# TODO: For some reason everything breaks after this command is sent... Have to investigate...
-		self.srv.sendall( "\x8c\x00\x18\x00%s : @whogroup %s\x00" %(character, other))
+		# 	-> packet length info was fixed, causing the script to crash
+		# self.srv.sendall( "\x8c\x00\x18\x00%s : @whogroup %s\x00" %(character, other))
+		
+		characterHex = character.encode("hex")
+		otherHex = other.encode("hex")
+		gmCommand = characterHex + "203a204077686f67726f757020" + otherHex
+		gmCommand = gmCommand.decode("hex")
+		messageLength = len(gmCommand) + 4
+		self.srv.sendall( "\x8c\x00%s%s" % (struct.pack("<H", messageLength),gmCommand))
+		
 		
 	def goToDroppedItem (self):
 		debug( "\n\n" )
