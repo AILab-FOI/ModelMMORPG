@@ -1300,7 +1300,7 @@ class Connection:
 	def NPCNextDialog( self, NPC ):
 		'''Get the next dialog from an NPC. NPC is the NPCs id (from the message received).'''
 		self.srv.sendall( "\xb9\0%s" % ( struct.pack( "<L", NPC ) ) )
-		debug("NEXT sent...")
+		# debug("NEXT sent...")
 	
 	def createParty (self, partyName): # WORKS
 		self.srv.sendall( "\xF9\0%s" % partyName.ljust(24, '\0'))
