@@ -2,7 +2,6 @@
 #-*- coding: utf-8 -*-
 
 import socket
-socket.setdefaulttimeout( 2 )
 import struct
 import time
 import threading
@@ -11,6 +10,9 @@ import re
 import select
 import os
 	
+
+findp_re = re.compile( r'Name: ([^\(]+) .* ?\| Location: ([0-9]+[-][0-9]+) ([0-9]+) ([0-9]+)' )
+findpp_re = re.compile( r"Name: ([^\(]+) .* ?\| Party: [\'](.*)[\']" )
 
 DEBUG = True
 CHARACTER = None
@@ -311,11 +313,13 @@ class PacketBuffer( threading.Thread ):
 		
 		self.detectedNPClist = []
 		
-		self.loggedInPlayers = None
+		self.loggedInPlayers = {}
 		
 		self.gameParties = {}
 		
-		self.npcMessage = None
+		self.npcMessages = []
+
+		self.playerParty = {}
 		
 
 	def updatePlayerData (self, slots):
@@ -332,7 +336,7 @@ class PacketBuffer( threading.Thread ):
 				packet = Packet( buff )
 				
 				# INVENTORY: 
-				self.playerInventory = packet.playerSlots
+				self.playerInventory = Packet.playerSlots
 				
 				# POSITION:
 				self.playerMap = Packet.mapID
@@ -355,7 +359,10 @@ class PacketBuffer( threading.Thread ):
 				self.gameParties = Packet.parties
 				
 				# Message from NPC
-				self.npcMessage = Packet.npcIncomingMessage
+				self.npcMessages = Packet.npcIncomingMessage
+
+				# Party memberships
+				self.playerParty = Packet.playerParty
 				
 				#debug (self.playerMap, self.playerPosX, self.playerPosY)
 				#debug ("\n\npacket created\n\n")
@@ -364,7 +371,7 @@ class PacketBuffer( threading.Thread ):
 				#debug (self.talkingToNPC)
 				#debug (self.loggedInPlayers)
 				#debug (self.gameParties)
-				debug (self.npcMessage)
+				#debug (self.npcMessages)
 								
 				self.packets.append( packet )
 				#debug( "\n\n" )
@@ -499,13 +506,15 @@ class Packet:
 	
 	npcDetectedName  = []
 	
-	loggedInPlayers = []
+	loggedInPlayers = {}
 	
 	parties = {}
 	
-	npcIncomingMessage = None
+	npcIncomingMessage = []
 	
 	whoInvites = None
+
+	playerParty = {}
 	
 	
 	
@@ -782,6 +791,7 @@ class Packet:
 		elif self.type == 'SMSG_PLAYER_CHAT':
 			
 			# debug("CHAT") # testing the packet identification
+			# debug( self.data )
 			
 			if re.match (".*[a-zA-Z0-9]+\:\ [0-9]+\-[0-9]\ \([0-9]+\,[0-9]+", self.data) is not None:
 				debug( "\n\nIncoming coordinates found!" )
@@ -817,14 +827,24 @@ class Packet:
 				Packet.chatCoordinates_y = "".join(Packet.chatCoordinates[pos+1:])
 				debug( "Coordinates Y: %s" %Packet.chatCoordinates_y )
 			
-			elif "Name: " in self.data:
+			elif findp_re.match( self.data[4:] ):
 				#~ debug ("-- ALL PLAYERS LOCATED --")
 				#~ debug (self.data[4:])
+				plname, plmap, plx, ply = findp_re.findall( self.data[4:] )[ 0 ]
+
+				Packet.loggedInPlayers[ plname ] = ( plmap, plx, ply )
 				
-				if (self.data[4:]) not in Packet.loggedInPlayers:
-					Packet.loggedInPlayers.append(self.data[4:])
-				#~ debug (Packet.loggedInPlayers)
-				
+				#~ debug ( 'Hmmm.... ' + str( Packet.loggedInPlayers ) )
+			
+			
+			elif findpp_re.match( self.data[4:] ):
+				#debug ("-- PLAYER PARTY DETECTED --")
+
+				plname, party = findpp_re.findall( self.data[4:] )[ 0 ]
+
+				Packet.playerParty[ plname ] = party
+
+				#debug( Packet.playerParty )
 				
 			#else:
 				#debug( "\n\nnon-coordinates chat inbound: %s" %self.data )
@@ -923,9 +943,9 @@ class Packet:
 		
 		
 		elif self.type == 'SMSG_BEING_NAME_RESPONSE':
-			debug (" \n\nNPC NAME DETECTED \n\n ")
+			#debug (" \n\nNPC NAME DETECTED \n\n ")
 			Packet.npcDetectedName.append(self.data[6:11])
-			debug (Packet.npcDetectedName)
+			#debug (Packet.npcDetectedName)
 	
 			
 		
@@ -999,8 +1019,8 @@ class Packet:
 			npcID = struct.unpack( "<L", self.data[ 4:8 ] )[0]
 			debug( "Getting message from NPC with ID:" )
 			debug( npcID )
-			npcMessage = self.data[ 8: ]
-			Packet.npcIncomingMessage = npcMessage
+			npcMessage = self.data[ 8:-1 ]
+			Packet.npcIncomingMessage.append( ( npcID, npcMessage ) )
 			debug( "\n\n"  )
 			debug( npcMessage )
 			
@@ -1027,7 +1047,7 @@ class Packet:
 			
 		
 		elif self.type == 'SMSG_NPC_CLOSE':
-			#~ debug ("CLOSING NPC COMMUNICATION")
+			#debug ("CLOSING NPC COMMUNICATION")
 			Packet.talkingWithNPC = None
 			
 			
@@ -1288,7 +1308,7 @@ class Connection:
 	def itemPickUp (self, itemIndex): # WORKS, but need to know item index
 		self.srv.sendall( "\x9f\x00%s" % (struct.pack( "<L", itemIndex )))
 		
-	def itemEquip (self, itemID): # WORKS, but need to know item index
+	def itemEquip (self, itemID): # WORKS, but need to know item index (slot number)
 		self.srv.sendall( "\xa9\x00%s" % ( struct.pack( "<L", itemID ) ) )
 
 	def NPCChoose( self, NPC, choice ):
@@ -1334,10 +1354,14 @@ class Connection:
 		listCommand = listCommand.decode("hex")
 		packetLength = len(listCommand) + 4
 		self.srv.sendall( "\x8c\0%s%s" %(struct.pack("<H", packetLength),listCommand))
-		debug("\n-- list all players command sent-- ")
+		#debug("\n-- list all players command sent-- ")
 		
 	def whereAnyone (self, hunter, victim): # Works for Jozek -> igor
 		self.srv.sendall( "\x8c\x00\x18\x00%s : @where %s\x00" %(hunter, victim))
+		
+	def partyStatus (self, character, other):
+		# TODO: For some reason everything breaks after this command is sent... Have to investigate...
+		self.srv.sendall( "\x8c\x00\x18\x00%s : @whogroup %s\x00" %(character, other))
 		
 	def goToDroppedItem (self):
 		debug( "\n\n" )
@@ -1441,7 +1465,8 @@ class Connection:
 		self.srv.sendall( "\xef\x00")
 
 	def answerToNPC(self, npcID, answer):
-		self.srv.sendall( "\xb8\x00%s" % (struct.pack("<LB", npcID, answer)))
+		print self.srv.sendall( "\xb8\x00%s" % (struct.pack("<LB", npcID, answer)))
+		debug( 'Answered to NPC %d with answer %d' % ( npcID, answer ) )
 		
 	def closeCommunication(self, npcID):
 		self.srv.sendall( "\x46\x01%s" % (struct.pack("<L", npcID )))
@@ -1528,6 +1553,8 @@ if __name__ == '__main__':
 		debug( "36. Drop item" )
 		debug( "37. List all logged in players with their position")
 		debug( "38. Send NEXT in dialog with NPC")
+		debug( "39. Get PARTY status" )
+		debug( "40. NPC: Next dialog" )
 		
 		debug( 67 * "-" )
 		
@@ -1569,7 +1596,7 @@ if __name__ == '__main__':
 		
 		elif command == "8": 
 			
-			itemID = int(raw_input("Enter item ID: "))
+			itemID = int(raw_input("Enter item ID (slot): "))
 			c.itemEquip(itemID)	
 		
 		elif command == "9": 
@@ -1688,6 +1715,17 @@ if __name__ == '__main__':
 		elif command == "38":
 			npcID = int(raw_input("Enter NPC id: "))
 			c.NPCNextDialog(npcID)
+
+		elif command == "39":
+			character = raw_input("Enter your nickname: ")
+			other = raw_input("Whose membership do you want to test?: ")
+			c.partyStatus( character, other )
+
+		elif command == "40":
+			npcID = int( raw_input( "Enter NPC id:" ) )
+			c.NPCNextDialog( npcID )
+					
+			
 			
 	'''
 	for i, j in zip( range( 50, 90 ), range( 50, 90 ) ): 

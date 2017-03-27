@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+
 import spade
 from spade.SWIKB import SWIKB as KB
 import time
