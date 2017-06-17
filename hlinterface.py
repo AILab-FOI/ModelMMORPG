@@ -5,7 +5,7 @@ import spade
 from spade.SWIKB import SWIKB as KB
 import llinterface as lli
 import time
-from random import random
+from random import random, randint
 
 class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def say( self, msg ):
@@ -460,10 +460,19 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		''' Act out an action '''
 		time.sleep( 1 )
 		if action[ 0 ] == 'randomWalk':
-			# TODO: make this actually random
-			self.setDestination( 23, 24, 2 )
-			time.sleep( 1 )
-			return True
+			try:
+				mp, x, y = self.location
+				mn, mx = -5, 6
+				x = int( x )
+				y = int( y )
+				x += randint( mn, mx )
+				y += randint( mn, mx )
+				self.setDestination( x, y, 2 )
+				time.sleep( 1 )
+				return True
+			except Exception as e:
+				print e
+				return False
 		elif action[ 0 ] == 'answerNPC':
 			npcID = int( action[ 1 ][ 0 ] )
 			answer = int( action[ 1 ][ 1 ] )
@@ -539,6 +548,16 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			except Exception as e:
 				print e
 				return False
+		elif action[ 0 ] == 'killMob':
+			slot = int( action[ 1 ][ 0 ] )
+			try:
+				self.say( "Trying to equip item in slot %d ..." % ( slot ) )
+				self.itemEquip( slot )
+				time.sleep( 1 )
+				return True
+			except Exception as e:
+				print e
+				return False
 	
 	
 	def actionDone( self, action ):
@@ -590,6 +609,13 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		def _process( self ):
 			while not self.myAgent.login_complete:
 				self.myAgent.login()
+				self.myAgent.loggedin = False
+				while not self.myAgent.loggedin:
+					try:
+						self.myAgent.quit()
+					except:
+						pass
+					self.myAgent.loggedin = self.myAgent.login()
 				time.sleep( 1 )
 				self.myAgent.pb.go()
 				counter = 0
@@ -773,7 +799,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			import sys
 			sys.exit()
 
-		''' TODO: Uncomment this later when random_walk is implemented
+		''' TODO: Uncomment this later when random_walk is fully implemented
 		try:		
 			self.say( 'Map knowledge base loading (this might take some time)!' )
 			self.kb.ask( "['tmwmap.P']" )
@@ -783,12 +809,6 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'Error while loading map knowledge base, aborting!' )
 			import sys
 			sys.exit()'''
-
-
-		
-
-		
-
 
 	def _setup( self ):
 		#login = self.Login()
@@ -800,5 +820,13 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 if __name__ == '__main__':
 	from testconf import *
-	a = ManaWorldPlayer( SERVER, PORT, USERNAME, PASSWORD, CHARACTER, 'player@127.0.0.1', 'tajna' )
-	a.start()
+	
+	agent_list = []	
+	for i in range( 1, 6 ):
+		a = ManaWorldPlayer( SERVER, PORT, 'mali_agent%d' % i, PASSWORD, CHARACTER, 'agent_%d@127.0.0.1' % i, 'tajna' )
+		a.start()
+		time.sleep( 5 )
+		agent_list.append( a )
+
+	# a = ManaWorldPlayer( SERVER, PORT, USERNAME, PASSWORD, CHARACTER, 'player@127.0.0.1', 'tajna' )
+	

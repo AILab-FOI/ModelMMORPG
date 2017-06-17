@@ -460,6 +460,14 @@ class PacketBuffer( threading.Thread ):
 			ret = [ i for i in self.packets if not i.seen ][ 0 ]
 		ret.seen = True
 		return ret
+	def get( self, typ ):
+		''' Get last (possibly seen) packet of type typ. 
+		If no such packet, return None. '''
+		try:
+			ret = [ i for i in self.packets if i.type in typ ][ 0 ]
+		except:
+			ret = None
+		return ret
 		
 class Item:
   def __init__( self, itemID, itemAmount ):
@@ -1157,7 +1165,7 @@ class Connection:
 
 	def login( self ):
 		'''Login to login server, then select character from character server and 
-		finally connect to map server.'''
+		finally connect to map server. '''
 		self.srv = socket.socket() 
 		self.srv.connect( ( self.server, self.port ) ) 
 		self.pb = PacketBuffer( self.srv )
@@ -1197,27 +1205,60 @@ class Connection:
 		
 		self.pb.go()
 		
-		buff = self.pb.getNew( 'SMSG_CHAR_LOGIN', timeout=20 )
+		buff = self.pb.getNew( 'SMSG_CHAR_LOGIN', timeout=2 )
 		# ok got character information, extract the names (send \x66 to get mapserver info, and login then)
-		self.character_list = buff.charlist
+		try:
+			self.character_list = buff.charlist
+		except:
+			debug( "Server doesn't respond. Will retry ..." )
+			return False
 		self.characters = buff.characters
 		debug( "Available characters:" )
 		
 		for j in [ i.__dict__ for i in self.characters.values() ]:
 			debug( j[ "name" ] )
 			debug( j )
+		
+		try:
+			# Extracting character name for later functions:
+			self.characterName = j["name"]
+			# debug (self.characterName)
+		except UnboundLocalError:
+			debug( "No characters defined! Trying to create one." )
+			self.pb.stop()
 			
-		# Extracting character name for later functions:
-		self.characterName = j["name"]
-		# debug (self.characterName)
+			p = "\x67\0%s%s" % ( self.username.ljust( 24, '\0' ), struct.pack( "<BBBBBBBBBBB", 7, 7, 7, 7, 1, 1, 0, 10, 0, 15, 0 ) )
+			
+			self.srv.sendall( p )
+
+			self.pb.go()
+			time.sleep( 0.2 )
+			try:
+				buff = self.pb.getNew( 'SMSG_CHAR_CREATE_SUCCEEDED' )
+				debug( "Character %s created!" % self.username )
+			except Exception, e:
+				debug( e )
+				debug( "Failed miserably ..." )
+			return False
 		
 		self.pb.stop()
 		self.srv.sendall( "\x66\0%s" % chr( self.character ) )
 		self.pb.go()
 		
 		debug( "Get map info" )
-		buff = self.pb.getNew( 'SMSG_CHAR_MAP_INFO' )
+		buff = self.pb.getNew( 'SMSG_CHAR_MAP_INFO', timeout=1 )
 		
+		try:
+			charid = buff.charid
+		except:
+			debug( [ (i.type, i.data) for i in self.pb.packets ] )
+			self.pb.stop()
+			self.srv.sendall( "\x66\0%s" % chr( self.character ) )
+			self.pb.go()
+		
+			debug( "Retry: get map info" )
+			buff = self.pb.get( 'SMSG_CHAR_MAP_INFO' )
+
 		charid = buff.charid
 		mapip = self.server
 		mapport = buff.mapport
@@ -1236,12 +1277,14 @@ class Connection:
 		self.srv.sendall( "\x72\0%s" % struct.pack( "<LLLLB", self.accid, c.char_id, self.id1, self.id2, self.sex ) )
 		self.pb.go()			
 
-		buff = self.pb.getNew( 'SMSG_MAP_LOGIN_SUCCESS' )
+		buff = self.pb.getNew( 'SMSG_MAP_LOGIN_SUCCESS', timeout=1 )
+		buff = self.pb.get( 'SMSG_MAP_LOGIN_SUCCESS' )
 		#self.pb.stop()
 
 		# connected, send to server that the map has been loaded
 		self.srv.sendall( "\x7d\0" )
 		debug( "Map loaded" )
+		return True
 
 	def quit( self ):
 		'''Logout from server'''
@@ -1501,9 +1544,16 @@ class Connection:
 if __name__ == '__main__':
 	from testconf import * 
 	c = Connection( SERVER, PORT, USERNAME, PASSWORD, CHARACTER )
-	c.login()
 
-	time.sleep( 1 )
+	loggedin = False
+	while not loggedin:
+		try:
+			c.quit()
+		except:
+			pass
+		loggedin = c.login()
+
+	time.sleep( 2 )
 	c.pb.go()		
 	
 	# Get the initial location of the player:
@@ -1564,6 +1614,8 @@ if __name__ == '__main__':
 		debug( "38. Send NEXT in dialog with NPC")
 		debug( "39. Get PARTY status" )
 		debug( "40. NPC: Next dialog" )
+		debug( 67 * "-" )
+		debug( "0. Quit" )
 		
 		debug( 67 * "-" )
 		
@@ -1733,6 +1785,9 @@ if __name__ == '__main__':
 		elif command == "40":
 			npcID = int( raw_input( "Enter NPC id:" ) )
 			c.NPCNextDialog( npcID )
+		elif command == "0":
+			c.quit() # works
+			sys.exit()
 					
 			
 			
@@ -1787,6 +1842,5 @@ if __name__ == '__main__':
 
 	debug( [ (i.type, i.data) for i in c.pb.packets ] )
 	'''
-	c.quit() # works
-	sys.exit()
+	
 
