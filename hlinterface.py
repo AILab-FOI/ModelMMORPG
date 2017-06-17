@@ -5,7 +5,7 @@ import spade
 from spade.SWIKB import SWIKB as KB
 import llinterface as lli
 import time
-from random import random, randint
+from random import random, randint, choice
 
 class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def say( self, msg ):
@@ -159,7 +159,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		elif npc == 'Sorfina' or npc == '110008655':
 			return False, None, "Sorfina"
 		elif npc == 'Tanisha':
-			return False, None, "Tanisha"
+			return "waiting_quest( 'Tanisha', '%s', maggots )", "maggots", "Tanisha"
 		return False, None, None
 
 	def getQuestSignificance( self, quest ):
@@ -346,7 +346,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 							self.say( 'Updating knowledge base with: ' + update_predicate )
 						if update:
 							try:
-								if not self.kb.ask( update % self.avatar_name ): # if I haven't got this quest already
+								if not self.kb.ask( update % self.avatar_name ) and not self.kb.ask( "solved_quest( '%s' )" % quest ): # if I haven't got this quest already and it isn't solved
 									update_predicate = 'assert( %s )' % update % self.avatar_name
 									self.kb.ask( update_predicate )
 									self.say( 'Updating knowledge base with: ' + update_predicate )
@@ -417,7 +417,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def selectObjective( self, objectives ):
 		''' Select most relevant objective (quest) to be solved next '''
-		query = "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No )." % ( self.avatar_name, self.avatar_name )
+		query = "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No ), \+ solved_quest( Name )." % ( self.avatar_name, self.avatar_name )
 		quests = self.askBelieve( query )
 		if quests:
 			next = sorted( quests, key=lambda x: x[ 'No' ] )[ 0 ][ 'Name' ]
@@ -441,7 +441,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			return action
 		else:
 			self.say( 'I have no idea how to solve quest "%s" ...' % quest )
-			return []
+			return None
 
 	def planQuest( self, quest ):
 		''' Derive a plan and start the quest '''
@@ -454,6 +454,13 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			return True # quest planned and started
 		else: 
 			return False # cannot plan or start quest	
+
+	def isThereANearByNPC( self ):
+		mp, x, y = self.location
+		query = "MapName = '%s', location( NPC, MapName, X, Y ), npc( _, NPC, MapName, X, Y ), npc_id( NID, NPC ), DX is abs( X - %s ), DY is abs( Y - %s ), DX < 6, DY < 6." % ( mp, x, y )
+		res = self.kb.ask( query  )
+		if res:
+			return choice( res )
 		
 
 	def act( self, action ):
@@ -461,6 +468,22 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		time.sleep( 1 )
 		if action[ 0 ] == 'randomWalk':
 			try:
+				nearnpc = self.isThereANearByNPC()
+				if nearnpc:
+					npc = nearnpc[ 'NPC' ]
+					npcID = nearnpc[ 'NID' ]
+					mapID = nearnpc[ 'MapName' ]
+					x = int( nearnpc[ 'X' ] )
+					y = int( nearnpc[ 'Y' ] )
+					try:
+						self.say( "Going to nearby NPC %s at location %s-%d-%d ..." % ( npc, mapID, x, y ) )
+						self.setDestination( x, y, 2 )
+						time.sleep( 2 )
+						self.act( [ 'talkToNPC', [ npcID ] ] )
+						return True
+					except Exception as e:
+						print e
+						return False
 				mp, x, y = self.location
 				mn, mx = -5, 6
 				x = int( x )
@@ -699,6 +722,9 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			planDone = False
 			while not planDone:
 				nextAction = self.myAgent.getNextAction( next )
+				if not nextAction:
+					self.myAgent.say( "My plan didn't work out. I'll try something else." )
+					break
 				self.myAgent.say( 'My next action is "%s(%s)"' % ( nextAction[ 0 ], ','.join( nextAction[ 1 ] ) ) )
 				result = self.myAgent.act( nextAction )
 				self.myAgent.say( 'I made my move, let us see if this worked ...' )
@@ -820,13 +846,26 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 if __name__ == '__main__':
 	from testconf import *
-	
-	agent_list = []	
-	for i in range( 1, 6 ):
-		a = ManaWorldPlayer( SERVER, PORT, 'mali_agent%d' % i, PASSWORD, CHARACTER, 'agent_%d@127.0.0.1' % i, 'tajna' )
-		a.start()
-		time.sleep( 5 )
-		agent_list.append( a )
+	import argparse
 
-	# a = ManaWorldPlayer( SERVER, PORT, USERNAME, PASSWORD, CHARACTER, 'player@127.0.0.1', 'tajna' )
+	parser = argparse.ArgumentParser( description='Create a TMW agent player (mali_agent[num])' )
+	parser.add_argument( '--name', help='Create a TMW agent "mali_agent[num]" agents', type=int )
+	parser.add_argument( '--num', help='Create [num] TMW agents from [name] to [name+num] "mali_agent[i]" agents', type=int )
+	parser.add_argument( '--interval', help='Interval between agent instances in seconds', type=int, default=10 )
+	
+	args = parser.parse_args() 	
+	
+	if args.num and args.name:
+		agent_list = []	
+		for i in range( args.name, args.name + args.num ):
+			a = ManaWorldPlayer( SERVER, PORT, 'mali_agent%d' % i, PASSWORD, CHARACTER, 'agent_%d@127.0.0.1' % i, 'tajna' )
+			a.start()
+			time.sleep( args.interval )
+			agent_list.append( a )
+	elif args.name:
+		a = ManaWorldPlayer( SERVER, PORT, 'mali_agent%d' % args.name, PASSWORD, CHARACTER, 'mali_agent%d@127.0.0.1' % args.name, 'tajna' )
+		a.start()
+
+	else:
+		print 'Invalid number of arguments. Type "hlinterface.py --help" for details.'
 	

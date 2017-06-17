@@ -63,6 +63,9 @@ do_action( equipItem( ItemName ), equipItem, [ ItemSlot ] ) :-
 	slot( _, ItemSlot, ItemID, _ ),
 	item( ItemID, _, ItemName ).
 
+do_action( killMob( MobName ), killMob, [ MobID ] ) :-
+	mob( MobID, _, MobName ).
+
 /*
 
 Quests:
@@ -78,6 +81,9 @@ Hasan - scorpion
 
 */
 
+/*
+ Sorfina's quest
+*/
 plan_quest( 'tutorial', Plan ) :-
 	A01 = answerNPC( 'ServerInitial', 1 ),
 	A02 = goToNPC( 'Sorfina' ),
@@ -102,6 +108,31 @@ plan_quest( 'tutorial', Plan ) :-
                  a( 9, A09 ),  a( 10, A10 ), a( 11, A11 ), a( 12, A12 ), 
                  a( 13, A13 ), a( 14, A14 ), a( 15, A15 ), a( 16, A16 ),
 		 a( 17, A17 ), a( 18, A18 ) ].
+
+/*
+ Tanisha's quest
+*/
+plan_quest( 'maggots', Plan ) :-
+	A01 = goToNPC( 'Tanisha' ),
+	A02 = answerNPC( 'Tanisha', 1 ),
+	A03 = answerNPC( 'Tanisha', 1 ), % next, next, next, next (4 times)
+	A04 = stopTalkingToNPC( 'Tanisha' ), 
+	A05 = equipItem( 'Knife' ),
+	A06 = killMob( 'Maggot' ),
+	A07 = killMob( 'Maggot' ),
+	A08 = killMob( 'Maggot' ),
+	A09 = killMob( 'Maggot' ),
+	A10 = killMob( 'Maggot' ),
+	A11 = talkToNPC( 'Tanisha' ), % 5 x next
+	A12 = stopTalkingToNPC( 'Tanisha' ),
+	A13 = tryToGoToLocation( '029-2', 114, 93 ),
+	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
+		 a( 5, A05 ),   a( 6, A06 ),  a( 7, A07 ),  a( 8, A08 ), 
+                 a( 9, A09 ),  a( 10, A10 ), a( 11, A11 ), a( 12, A12 ), 
+                 a( 13, A13 ) ].
+	
+	
+	
 
 /* Auxiliary predicates */
 
