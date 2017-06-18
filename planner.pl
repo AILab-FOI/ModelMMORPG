@@ -12,8 +12,13 @@
 :- dynamic party/2.
 :- dynamic social_network/3.
 :- dynamic slot/4.
+:- dynamic agent_location/4. % The current agent
+:- dynamic npc_location/4.
+:- dynamic player_location/4. % Other players
 :- dynamic location/4.
 :- dynamic location/5.
+:- dynamic mob_location/5.
+:- dynamic item_location/5.
 :- dynamic ownership/3.
 
 /*
@@ -41,7 +46,7 @@ Actions:
 do_action( goToLocation( Map, X, Y ), goToLocation, [ Map, X, Y ] ).
 
 done_action( goToLocation( Map, X, Y ), Agent ) :-
-	location( Agent, Map, X, Y ).
+	agent_location( Agent, Map, X, Y ).
 
 do_action( tryToGoToLocation( Map, X, Y ), tryToGoToLocation, [ Map, X, Y ] ).
 
@@ -63,8 +68,7 @@ do_action( equipItem( ItemName ), equipItem, [ ItemSlot ] ) :-
 	slot( _, ItemSlot, ItemID, _ ),
 	item( ItemID, _, ItemName ).
 
-do_action( killMob( MobName ), killMob, [ MobID ] ) :-
-	mob( MobID, _, MobName ).
+do_action( killMob( MobName ), killMob, [ MobName ] ).
 
 /*
 
@@ -86,11 +90,11 @@ Hasan - scorpion
 */
 plan_quest( 'tutorial', Plan ) :-
 	A01 = answerNPC( 'ServerInitial', 1 ),
-	A02 = goToNPC( 'Sorfina' ),
-	A03 = answerNPC( 'Sorfina', 1 ),
+	A02 = tryToGoToLocation( '029-2', 29, 24 ),
+	A03 = goToNPC( 'Sorfina' ),
 	A04 = answerNPC( 'Sorfina', 1 ),
 	A05 = answerNPC( 'Sorfina', 1 ),
-	A06 = tryToGoToLocation( '029-2', 29, 24 ),
+	A06 = answerNPC( 'Sorfina', 1 ),
 	A07 = goToNPC( '#Carpet' ),
 	A08 = stopTalkingToNPCSorfina( 'Sorfina' ), % 8655 ???
 	A09 = stopTalkingToNPCSorfina( 'Sorfina' ), % 8655 ???
@@ -113,28 +117,40 @@ plan_quest( 'tutorial', Plan ) :-
  Tanisha's quest
 */
 plan_quest( 'maggots', Plan ) :-
-	A01 = goToNPC( 'Tanisha' ),
-	A02 = answerNPC( 'Tanisha', 1 ),
-	A03 = answerNPC( 'Tanisha', 1 ), % next, next, next, next (4 times)
+	A01 = answerNPC( 'Tanisha', 1 ),
+	A02 = answerNPC( 'Tanisha', 1 ), % next, next, next, next (4 times)
+	A03 = stopTalkingToNPC( 'Tanisha' ), 
 	A04 = stopTalkingToNPC( 'Tanisha' ), 
 	A05 = stopTalkingToNPC( 'Tanisha' ), 
 	A06 = stopTalkingToNPC( 'Tanisha' ), 
 	A07 = stopTalkingToNPC( 'Tanisha' ), 
-	A08 = stopTalkingToNPC( 'Tanisha' ), 
-	A09 = equipItem( 'Knife' ),
+	A08 = equipItem( 'Knife' ),
+	A09 = tryToGoToLocation( '029-2', 102, 87 ),
 	A10 = killMob( 'Maggot' ),
 	A11 = killMob( 'Maggot' ),
 	A12 = killMob( 'Maggot' ),
 	A13 = killMob( 'Maggot' ),
 	A14 = killMob( 'Maggot' ),
-	A15 = talkToNPC( 'Tanisha' ), % 5 x next
-	A16 = stopTalkingToNPC( 'Tanisha' ),
-	A17 = tryToGoToLocation( '029-2', 114, 93 ),
+	/*A15 = killMob( 'Maggot' ),
+	A16 = killMob( 'Maggot' ),
+	A17 = killMob( 'Maggot' ),
+	A18 = killMob( 'Maggot' ),
+	A19 = killMob( 'Maggot' ),
+	A20 = killMob( 'Maggot' ),*/
+	A21 = talkToNPC( 'Tanisha' ), % 5 x next
+	A22 = stopTalkingToNPC( 'Tanisha' ),
+	A23 = stopTalkingToNPC( 'Tanisha' ),
+	A24 = stopTalkingToNPC( 'Tanisha' ),
+	A25 = stopTalkingToNPC( 'Tanisha' ),
+	A26 = stopTalkingToNPC( 'Tanisha' ),
+	A27 = tryToGoToLocation( '029-2', 114, 93 ),
 	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
 		 a( 5, A05 ),   a( 6, A06 ),  a( 7, A07 ),  a( 8, A08 ), 
                  a( 9, A09 ),  a( 10, A10 ), a( 11, A11 ), a( 12, A12 ), 
-                 a( 13, A13 ), a( 14, A14 ), a( 15, A15 ), a( 16, A16 ),
-		 a( 17, A17 ) ].
+                 a( 13, A13 ), a( 14, A14 ), /*a( 15, A15 ), a( 16, A16 ),
+		 a( 17, A17 ), a( 18, A18 ), a( 19, A19 ), a( 20, A20 ),*/ 
+		 a( 21, A21 ), a( 22, A22 ), a( 23, A23 ), a( 24, A24 ), 
+                 a( 25, A25 ), a( 26, A26 ), a( 27, A27 ) ].
 	
 	
 	

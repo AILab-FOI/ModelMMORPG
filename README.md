@@ -35,6 +35,7 @@ PORT = 6901 # make sure this is right
 USERNAME = 'your username'
 PASSWORD = 'your password'
 CHARACTER = 0 # the index of your registered character - 1
+KBFOLDER = '/path/to/kbs' # Path were you want to store your agents' knowledge bases
 ```
 
 To test the low-level interface run
@@ -51,4 +52,20 @@ To test the high level interface run
 ./hlinterface.py
 ```
 
-The interface will start and try to solve quests by it self. This part is highly experimental and not fully functional.
+The interface will start and try to solve quests by it self. This part is highly experimental and not fully functional. The script hass the following syntax:
+
+```
+usage: hlinterface.py [-h] [--name NAME] [--num NUM] [--interval INTERVAL]
+                      [--clear]
+
+Create a TMW agent player (mali_agent[num])
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --name NAME          Create a TMW agent "mali_agent[num]" agents
+  --num NUM            Create [num] TMW agents from [name] to [name+num]
+                       "mali_agent[i]" agents
+  --interval INTERVAL  Interval between agent instances in seconds
+  --clear              Clear existing knowledge bases (DANGEROUS: Deletes all
+                       .pl files from KBFOLDER)
+```

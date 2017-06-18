@@ -54,7 +54,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		if not hasattr( self, 'mobs_cache' ):
 			self.mobs_cache = None
 		try:
-			print 'Monster movements:', self.pb.monsterMovements
+			print 'Monster movements (agent):', self.pb.monsterMovements
 			print 'Update cache?:', self.mobs_cache == self.pb.monsterMovements
 			if self.mobs_cache == self.pb.monsterMovements:
 				print 'Nothing to update'
@@ -64,9 +64,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			print 'Returning', mobs
 			return mobs
 		except Exception, e:
-			print 70 * '*'
 			print e
-			print 70 * '*'
 			return None
 
 	def getVisibleNPCs( self, recursion_level=0 ):
@@ -256,9 +254,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			location = self.getMyLocation()
 			if location:
 				mapname, x, y = location 
-				# Do not need to delete my location since all locations were deleted earlier
-				update_predicate = "assert( location( '%s', '%s', %s, %s ) )" % ( self.avatar_name, mapname, x, y )
+				delete_predicate = "retract( agent_location( _, _, _, _ ) )"
+				update_predicate = "assert( agent_location( '%s', '%s', %s, %s ) )" % ( self.avatar_name, mapname, x, y )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
+				self.kb.ask( delete_predicate )
 				self.kb.ask( update_predicate )
 			elif location == None:
 				self.say( "I didn't change my location ..." )
@@ -289,11 +288,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			mobs = self.getVisibleMobs()
 			# First delete all known locations
 			if mobs:
-				delete_predicate = "retract( location( _, _, _, _, _ ) )"
+				delete_predicate = "retract( mob_location( _, _, _, _, _ ) )"
 				self.kb.ask( delete_predicate )
 				for mobid, loc in mobs.items():
 					mob, mapname, x, y = loc
-					update_predicate = "assert( location( %s, '%s', %d, %d, %d ) )" % ( mob, mapname, x, y, mobid )
+					update_predicate = "assert( mob_location( %s, '%s', %d, %d, %d ) )" % ( mob, mapname, x, y, mobid )
 					self.say( 'Updating knowledge base with: ' + update_predicate )
 					self.kb.ask( update_predicate )
 			elif mobs == None:
@@ -307,7 +306,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			if npcs:
 				for npc, loc in npcs.items():
 					mapname, x, y, ID = loc
-					update_predicate = "assert( location( '%s', '%s', %s, %s ) )" % ( npc, mapname, x, y )
+					update_predicate = "assert( npc_location( '%s', '%s', %s, %s ) )" % ( npc, mapname, x, y )
 					self.say( 'Updating knowledge base with: ' + update_predicate )
 					self.kb.ask( update_predicate )
 			elif npcs == None:
@@ -318,9 +317,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'Updating visible players ...' )
 			players = self.getVisiblePlayers()
 			if players:
+				delete_predicate = "retract( player_location( _, _, _, _ ) )"
+				self.kb.ask( delete_predicate )
 				for p, loc in players.items():
 					mapname, x, y = loc
-					update_predicate = "assert( location( '%s', '%s', %s, %s ) )" % ( p, mapname, x, y )
+					update_predicate = "assert( player_location( '%s', '%s', %s, %s ) )" % ( p, mapname, x, y )
 					self.say( 'Updating knowledge base with: ' + update_predicate )
 					self.kb.ask( update_predicate )
 			elif players == None:
@@ -332,9 +333,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'Updating visible items ...' )
 			itms = self.getVisibleItems()
 			if itms:
+				delete_predicate = "retract( item_location( _, _, _, _, _ ) )"
 				for item, loc in itms.items():
 					amount, mapname, x, y = loc
-					update_predicate = "assert( location( '%s', %d, '%s', %d, %d ) )" % ( item, amount, mapname, x, y )
+					update_predicate = "assert( item_location( '%s', %d, '%s', %d, %d ) )" % ( item, amount, mapname, x, y )
 					self.say( 'Updating knowledge base with: ' + update_predicate )
 					self.kb.ask( update_predicate )
 			elif itms == None:
@@ -447,7 +449,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		time.sleep( 1 )
 		query = "next_action( _action ), do_action( _action, Action, _params ), member( Param, _params )"
 		res = self.kb.ask( query )
-		print res
+		#print res
 		if res:
 			action = [ 1, [] ]
 			for r in res:
@@ -455,6 +457,13 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				action[ 1 ].append( r[ 'Param' ] )
 			return action
 		else:
+			res = self.kb.ask( query )
+			if res:
+				action = [ 1, [] ]
+				for r in res:
+					action[ 0 ] = r[ 'Action' ]
+					action[ 1 ].append( r[ 'Param' ] )
+				return action
 			self.say( 'I have no idea how to solve quest "%s" ...' % quest )
 			return None
 
@@ -472,17 +481,18 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def isThereANearByNPC( self ):
 		mp, x, y = self.location
-		query = "MapName = '%s', location( NPC, MapName, X, Y ), npc( _, NPC, MapName, X, Y ), npc_id( NID, NPC ), DX is abs( X - %s ), DY is abs( Y - %s ), DX < 6, DY < 6." % ( mp, x, y )
+		query = "MapName = '%s', npc_location( NPC, MapName, X, Y ), npc( _, NPC, MapName, X, Y ), npc_id( NID, NPC ), DX is abs( X - %s ), DY is abs( Y - %s ), DX < 6, DY < 6." % ( mp, x, y )
 		res = self.kb.ask( query  )
 		if res:
 			return choice( res )
 
-	def isThereANearMobWithType( self, mobtype ):
+	def isThereANearMobWithType( self, mobname ):
 		mp, x, y = self.location
-		query = "location( MID, '%s', X, Y, BID ), mob( MID, _, '%s' ), DX is abs( %s - X ), DY is abs( %s - Y ), DX < 6, DY < 6" % ( mp, mobtype, x, y )
+		query = "mob_location( MID, '%s', X, Y, BID ), mob( MID, _, '%s' ), DX is abs( %s - X ), DY is abs( %s - Y ), DX < 6, DY < 6" % ( mp, mobname, x, y )
 		res = self.kb.ask( query )
+		res = sorted( res, key=lambda x:x[ 'BID' ] )
 		if res:
-			return choice( res )
+			return res[ -1 ]
 		
 
 	def act( self, action ):
@@ -594,18 +604,35 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				print e
 				return False
 		elif action[ 0 ] == 'killMob':
-			mobtype = int( action[ 1 ][ 0 ] )
+			mobname = action[ 1 ][ 0 ]
 			try:
-				self.say( "Trying to attack mob with ID %d ..." % ( mobtype ) )
+				self.say( "Trying to attack a %s ..." % ( mobname ) )
 				for i in range( 10 ): # Retry 10 times
-					mob = self.isThereANearMobWithType( mobtype )
+					mob = self.isThereANearMobWithType( mobname )
 					if mob:
-						monster_ID = mob[ "BID" ]
-						self.attack( monster_ID, 7 ) # 7 to keep attacking, 0 for one attack
+						monster_ID = int( mob[ "BID" ] )
+						monster_X = int( mob[ "X" ] )
+						monster_Y = int( mob[ "Y" ] )
+						print "MONSTER ID", monster_ID
+						self.setDestination( monster_X, monster_Y, 2 )
 						time.sleep( 1 )
-						return True
+						self.attack( monster_ID, 7 ) # 7 to keep attacking, 0 for one attack
+						self.setDestination( monster_X - randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
+						self.attack( monster_ID, 7 )
+						time.sleep( 1 )
+						self.setDestination( monster_X + randint( 0, 2 ), monster_Y + randint( 0, 2 ), 2 )
+						self.attack( monster_ID, 7 )
+						time.sleep( 1 )
+						self.setDestination( monster_X - randint( 0, 2 ), monster_Y + randint( 0, 2 ), 2 )
+						self.attack( monster_ID, 7 )
+						time.sleep( 1 )
+						self.setDestination( monster_X + randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
+						self.attack( monster_ID, 7 )
+						time.sleep( 1 )
 					else:
 						self.say( "There are no monsters of this type near me. " )
+				if mob:
+					return True
 				self.say( "There are no monsters of this type near me. Giving up." )
 				return False
 			except Exception as e:
@@ -638,6 +665,9 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			print 'My location', self.location
 			print 'My destination', tuple( action[ 1 ][ 1: ] )
 			return self.location == tuple( action[ 1 ][ 1: ] ) # returns True if the agent has arrived
+		if action[ 0 ] == 'killMob':
+			time.sleep( 1 ) # TODO: Proove this
+			return True
 		return False # Unknown action
 
 	def actionFailed( self ):
@@ -785,7 +815,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				try:
 					planDone = self.myAgent.planDone( next )
 				except Exception as e:
-					print e
+					print 'ERROR: ', e
 
 				if planDone:
 					self.myAgent.say( 'I finished quest "%s"! Going for the next one ...' % next )

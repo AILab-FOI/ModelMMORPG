@@ -348,7 +348,7 @@ class PacketBuffer( threading.Thread ):
 				
 				# MONSTER MOVEMENTS (id, x, y)
 				self.monsterMovements = Packet.critterMovements
-				debug( 'Monster movements:', self.monsterMovements )
+				debug( 'Monster movements (lli):', self.monsterMovements )
 				
 				# Player is talking to NPC with name:
 				self.talkingToNPC = Packet.talkingWithNPC
