@@ -6,11 +6,17 @@ from spade.SWIKB import SWIKB as KB
 import llinterface as lli
 import time
 from random import random, randint, choice
+from os.path import isfile, join
 
 class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 	def say( self, msg ):
 		''' Say something (e.g. print to console for debug purposes) '''
 		print '%s: %s' % ( self.name.split( '@' )[ 0 ], str( msg ) )
+
+	def storeKB( self ):
+		''' Store the current state of the KB for later use '''
+		self.kb.ask( "store( '%s' )" % self.kbfile )
+		self.say( 'Stored my current state of mind!' )
 
 	def getInventory( self ):
 		''' Get current inventory 
@@ -48,12 +54,19 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		if not hasattr( self, 'mobs_cache' ):
 			self.mobs_cache = None
 		try:
+			print 'Monster movements:', self.pb.monsterMovements
+			print 'Update cache?:', self.mobs_cache == self.pb.monsterMovements
 			if self.mobs_cache == self.pb.monsterMovements:
+				print 'Nothing to update'
 				return None
-			self.mobs_cache = self.pb.monsterMovements
+			self.mobs_cache = dict( [ ( i, j ) for i, j in self.pb.monsterMovements.items() ] )
 			mobs = dict( [ ( i, ( k[ -1 ][ 0 ], self.pb.playerMap, k[ -1 ][ 1 ], k[ -1 ][ 2 ] ) ) for i, k in self.mobs_cache.items() ] )
+			print 'Returning', mobs
 			return mobs
-		except:
+		except Exception, e:
+			print 70 * '*'
+			print e
+			print 70 * '*'
 			return None
 
 	def getVisibleNPCs( self, recursion_level=0 ):
@@ -276,11 +289,11 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			mobs = self.getVisibleMobs()
 			# First delete all known locations
 			if mobs:
-				delete_predicate = "retract( location( _, _, _, _ ) )"
+				delete_predicate = "retract( location( _, _, _, _, _ ) )"
 				self.kb.ask( delete_predicate )
-				for loc in mobs.values():
+				for mobid, loc in mobs.items():
 					mob, mapname, x, y = loc
-					update_predicate = "assert( location( %s, '%s', %d, %d ) )" % ( mob, mapname, x, y )
+					update_predicate = "assert( location( %s, '%s', %d, %d, %d ) )" % ( mob, mapname, x, y, mobid )
 					self.say( 'Updating knowledge base with: ' + update_predicate )
 					self.kb.ask( update_predicate )
 			elif mobs == None:
@@ -389,6 +402,8 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				update_predicate = "assert( social_network( '%s', '%s', '%s' ) )" % ( self.avatar_name, player, tag )
 				self.say( 'Updating knowledge base with: ' + update_predicate )
 				self.kb.ask( update_predicate )
+		# Store my knowledgebase		
+		self.storeKB()
 
 				 
 
@@ -459,6 +474,13 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		mp, x, y = self.location
 		query = "MapName = '%s', location( NPC, MapName, X, Y ), npc( _, NPC, MapName, X, Y ), npc_id( NID, NPC ), DX is abs( X - %s ), DY is abs( Y - %s ), DX < 6, DY < 6." % ( mp, x, y )
 		res = self.kb.ask( query  )
+		if res:
+			return choice( res )
+
+	def isThereANearMobWithType( self, mobtype ):
+		mp, x, y = self.location
+		query = "location( MID, '%s', X, Y, BID ), mob( MID, _, '%s' ), DX is abs( %s - X ), DY is abs( %s - Y ), DX < 6, DY < 6" % ( mp, mobtype, x, y )
+		res = self.kb.ask( query )
 		if res:
 			return choice( res )
 		
@@ -572,12 +594,20 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				print e
 				return False
 		elif action[ 0 ] == 'killMob':
-			slot = int( action[ 1 ][ 0 ] )
+			mobtype = int( action[ 1 ][ 0 ] )
 			try:
-				self.say( "Trying to equip item in slot %d ..." % ( slot ) )
-				self.itemEquip( slot )
-				time.sleep( 1 )
-				return True
+				self.say( "Trying to attack mob with ID %d ..." % ( mobtype ) )
+				for i in range( 10 ): # Retry 10 times
+					mob = self.isThereANearMobWithType( mobtype )
+					if mob:
+						monster_ID = mob[ "BID" ]
+						self.attack( monster_ID, 7 ) # 7 to keep attacking, 0 for one attack
+						time.sleep( 1 )
+						return True
+					else:
+						self.say( "There are no monsters of this type near me. " )
+				self.say( "There are no monsters of this type near me. Giving up." )
+				return False
 			except Exception as e:
 				print e
 				return False
@@ -778,16 +808,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 						start = self.myAgent.planQuest( next )
 						if not start:
 							self.myAgent.say( 'Cannot plan or start quest ...' )
-							return
-				
-			
-
-	#class Login( spade.Behaviour.OneShotBehaviour ):
-	#	''' Login to TMW server and locate the player '''
-	#	def _process( self ):
-				
-				
-				
+							return	
 				
 
 	class ChangeRole(spade.Behaviour.OneShotBehaviour):
@@ -801,6 +822,19 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		lli.CHARACTER = self.name.split( '@' )[ 0 ]
 		
 		self.kb = KB()
+		
+		# Check if there is an existing knowledge base
+		self.kbfile = join( KBFOLDER, lli.CHARACTER + '.pl' )
+		if isfile( self.kbfile ):
+			try:
+				self.say( 'I found my old brain!' )
+				self.kb.ask( "['" + self.kbfile + "']" )
+				self.say( 'Loaded my previous state of mind!' )
+			except:
+				self.say( 'Error while loading previous knowledge base file, aborting!' )
+				import sys
+				sys.exit()
+
 		try:		
 			self.kb.ask( "['planner.pl']" )
 			self.say( 'Planner loaded!' )
@@ -847,13 +881,23 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 if __name__ == '__main__':
 	from testconf import *
 	import argparse
+	import os
+	import glob
 
 	parser = argparse.ArgumentParser( description='Create a TMW agent player (mali_agent[num])' )
 	parser.add_argument( '--name', help='Create a TMW agent "mali_agent[num]" agents', type=int )
 	parser.add_argument( '--num', help='Create [num] TMW agents from [name] to [name+num] "mali_agent[i]" agents', type=int )
 	parser.add_argument( '--interval', help='Interval between agent instances in seconds', type=int, default=10 )
+	parser.add_argument( '--clear', help='Clear existing knowledge bases (DANGEROUS: Deletes all .pl files from KBFOLDER)', action='store_true' )
 	
-	args = parser.parse_args() 	
+	
+	args = parser.parse_args()
+
+	# Delete all knowledge bases
+	if args.clear:
+		files = glob.glob( join( KBFOLDER, '*.pl' ) )
+		for f in files:
+			os.remove( f )
 	
 	if args.num and args.name:
 		agent_list = []	

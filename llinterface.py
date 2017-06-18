@@ -348,6 +348,7 @@ class PacketBuffer( threading.Thread ):
 				
 				# MONSTER MOVEMENTS (id, x, y)
 				self.monsterMovements = Packet.critterMovements
+				debug( 'Monster movements:', self.monsterMovements )
 				
 				# Player is talking to NPC with name:
 				self.talkingToNPC = Packet.talkingWithNPC
@@ -914,7 +915,7 @@ class Packet:
 			# NOTE: if we put self.critterMovements instead of class variable Packet.critterMovements, 
 			# the dictionary is reset by every received package
 			
-			# print Packet.critterMovements
+			debug( Packet.critterMovements )
 			
 			
 		

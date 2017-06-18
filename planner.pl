@@ -117,19 +117,24 @@ plan_quest( 'maggots', Plan ) :-
 	A02 = answerNPC( 'Tanisha', 1 ),
 	A03 = answerNPC( 'Tanisha', 1 ), % next, next, next, next (4 times)
 	A04 = stopTalkingToNPC( 'Tanisha' ), 
-	A05 = equipItem( 'Knife' ),
-	A06 = killMob( 'Maggot' ),
-	A07 = killMob( 'Maggot' ),
-	A08 = killMob( 'Maggot' ),
-	A09 = killMob( 'Maggot' ),
+	A05 = stopTalkingToNPC( 'Tanisha' ), 
+	A06 = stopTalkingToNPC( 'Tanisha' ), 
+	A07 = stopTalkingToNPC( 'Tanisha' ), 
+	A08 = stopTalkingToNPC( 'Tanisha' ), 
+	A09 = equipItem( 'Knife' ),
 	A10 = killMob( 'Maggot' ),
-	A11 = talkToNPC( 'Tanisha' ), % 5 x next
-	A12 = stopTalkingToNPC( 'Tanisha' ),
-	A13 = tryToGoToLocation( '029-2', 114, 93 ),
+	A11 = killMob( 'Maggot' ),
+	A12 = killMob( 'Maggot' ),
+	A13 = killMob( 'Maggot' ),
+	A14 = killMob( 'Maggot' ),
+	A15 = talkToNPC( 'Tanisha' ), % 5 x next
+	A16 = stopTalkingToNPC( 'Tanisha' ),
+	A17 = tryToGoToLocation( '029-2', 114, 93 ),
 	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
 		 a( 5, A05 ),   a( 6, A06 ),  a( 7, A07 ),  a( 8, A08 ), 
                  a( 9, A09 ),  a( 10, A10 ), a( 11, A11 ), a( 12, A12 ), 
-                 a( 13, A13 ) ].
+                 a( 13, A13 ), a( 14, A14 ), a( 15, A15 ), a( 16, A16 ),
+		 a( 17, A17 ) ].
 	
 	
 	
@@ -187,4 +192,9 @@ start_quest( Quest ) :-
 
 start_quest( Quest ) :-
 	assert( current_quest( Quest ) ).
+
+store( File ) :-
+	open( File, write, Out ),
+	with_output_to( Out, listing ),
+	close( Out ).
 
