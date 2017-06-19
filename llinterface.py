@@ -348,7 +348,7 @@ class PacketBuffer( threading.Thread ):
 				
 				# MONSTER MOVEMENTS (id, x, y)
 				self.monsterMovements = Packet.critterMovements
-				debug( 'Monster movements (lli):', self.monsterMovements )
+				#debug( 'Monster movements (lli):', self.monsterMovements )
 				
 				# Player is talking to NPC with name:
 				self.talkingToNPC = Packet.talkingWithNPC
@@ -787,14 +787,28 @@ class Packet:
 
 		
 		
+		elif self.type == 'SMSG_BEING_REMOVE':
+			debug( "\n -- being removed from map (maybe it died?)!" )
+			beingID = struct.unpack ("<L", self.data[-4:])[0]
+			debug( "Removed being ID: %d" % beingID )
+			try:
+				#del Packet.critterMovements[ beingID ]
+				Packet.critterMovements = {}
+				debug( "\nUpdated list of critters on the map:" )
+			except:
+				debug( 'No such critter: %d' % beingID )
+			debug( Packet.critterMovements )
+			
 		elif self.type == 'SMSG_ITEM_REMOVE':
 			debug( "\n -- item removed from map!" )
 			droppedItemID = struct.unpack ("<L", self.data[-4:])[0]
 			debug( "Removed item ID: %d" %droppedItemID )
-			del Packet.droppedItemDict[droppedItemID]
-			debug( "\nUpdated list of items on the map:" )
+			try:
+				del Packet.droppedItemDict[droppedItemID]
+				debug( "\nUpdated list of items on the map:" )
+			except:
+				debug( 'No such item: %d' % droppedItemID )
 			debug( Packet.droppedItemDict )
-			
 
 			
 		elif self.type == 'SMSG_PLAYER_CHAT':

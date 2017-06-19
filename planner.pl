@@ -131,12 +131,12 @@ plan_quest( 'maggots', Plan ) :-
 	A12 = killMob( 'Maggot' ),
 	A13 = killMob( 'Maggot' ),
 	A14 = killMob( 'Maggot' ),
-	/*A15 = killMob( 'Maggot' ),
+	A15 = killMob( 'Maggot' ),
 	A16 = killMob( 'Maggot' ),
 	A17 = killMob( 'Maggot' ),
 	A18 = killMob( 'Maggot' ),
 	A19 = killMob( 'Maggot' ),
-	A20 = killMob( 'Maggot' ),*/
+	A20 = goToNPC( 'Tanisha' ),
 	A21 = talkToNPC( 'Tanisha' ), % 5 x next
 	A22 = stopTalkingToNPC( 'Tanisha' ),
 	A23 = stopTalkingToNPC( 'Tanisha' ),
@@ -147,13 +147,39 @@ plan_quest( 'maggots', Plan ) :-
 	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
 		 a( 5, A05 ),   a( 6, A06 ),  a( 7, A07 ),  a( 8, A08 ), 
                  a( 9, A09 ),  a( 10, A10 ), a( 11, A11 ), a( 12, A12 ), 
-                 a( 13, A13 ), a( 14, A14 ), /*a( 15, A15 ), a( 16, A16 ),
-		 a( 17, A17 ), a( 18, A18 ), a( 19, A19 ), a( 20, A20 ),*/ 
+                 a( 13, A13 ), a( 14, A14 ), a( 15, A15 ), a( 16, A16 ),
+		 a( 17, A17 ), a( 18, A18 ), a( 19, A19 ), a( 20, A20 ), 
 		 a( 21, A21 ), a( 22, A22 ), a( 23, A23 ), a( 24, A24 ), 
                  a( 25, A25 ), a( 26, A26 ), a( 27, A27 ) ].
-	
-	
-	
+
+/* Soul Menhir#candor */
+plan_quest( 'soul_menhir_candor', Plan ) :-
+	A01 = answerNPC( 'Soul Menhir#candor', 1 ),
+	A02 = stopTalkingToNPC( 'Soul Menhir#candor' ),
+	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].
+
+/* Kaan */
+plan_quest( 'kaan', Plan ) :-
+	A01 = answerNPC( 'Kaan', 1 ),
+	A02 = stopTalkingToNPC( 'Kaan' ),
+	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].	
+
+/* Aiden's quest - monster points */
+plan_quest( 'monster_points', Plan ) :-
+	A01 = answerNPC( 'Aiden', 1 ),
+	A02 = answerNPC( 'Aiden', 1 ), % next, next, next, next (4 times)
+	A03 = stopTalkingToNPC( 'Aiden' ), 
+	A04 = stopTalkingToNPC( 'Aiden' ), 
+	A05 = stopTalkingToNPC( 'Aiden' ), 
+	A06 = stopTalkingToNPC( 'Aiden' ),
+	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
+		 a( 5, A05 ),   a( 6, A06 ) ].
+
+/* Default: stop talking */
+plan_quest( 'stop_taking', Plan ) :-
+	waiting_quest( NPC, _, stop_talking ),
+	A01 = stopTalkingToNPC( NPC ),
+	Plan = [ a( 1, A01 ) ].	
 
 /* Auxiliary predicates */
 

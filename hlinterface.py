@@ -169,9 +169,17 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				return False, None, "Sorfina"
 		elif npc == 'Sorfina' or npc == '110008655':
 			return False, None, "Sorfina"
+		elif npc == 'Dresser#tutorial':
+			return False, None, "Sorfina"
 		elif npc == 'Tanisha':
 			return "waiting_quest( 'Tanisha', '%s', maggots )", "maggots", "Tanisha"
-		return False, None, None
+		elif npc == 'Soul Menhir#candor':
+			return "waiting_quest( 'Soul Menhir#candor', '%s', soul_menhir_candor )", "soul_menhir_candor", "Soul Menhir#candor"
+		elif npc == 'Kaan':
+			return "waiting_quest( 'Kaan', '%s', kaan )", "kaan", "Kaan"
+		elif npc == 'Aiden':
+			return "waiting_quest( 'Aiden', '%s', monster_points )", "monster_points", "Aiden"
+		return "waiting_quest( '%s', '%s', stop_talking )" % npc, "stop_talking", npc
 
 	def getQuestSignificance( self, quest ):
 		''' Hard-coded significances of various quests loosely modelled after 
@@ -350,37 +358,42 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			except Exception as e:
 				print e
 			counter = 1
-			if npc_messages:
-				for npc, messages in npc_messages.items():
-					for message in messages:
-						res = self.interpretNPCMessage( npc, message )
-						update, quest, npc = res
-						if npc:
-							update_predicate = "assert( npc_message( '%s', '%s', '%s' ) )" % ( self.avatar_name, npc, message.replace( "'", "\\'" ) )
-							self.kb.ask( update_predicate )
-							self.say( 'Updating knowledge base with: ' + update_predicate )
-						if update:
-							try:
-								if not self.kb.ask( update % self.avatar_name ) and not self.kb.ask( "solved_quest( '%s' )" % quest ): # if I haven't got this quest already and it isn't solved
-									update_predicate = 'assert( %s )' % update % self.avatar_name
-									self.kb.ask( update_predicate )
-									self.say( 'Updating knowledge base with: ' + update_predicate )
-									sign = self.getQuestSignificance( quest )
-									update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )
-									self.kb.ask( update_predicate )
-									self.say( 'Updating knowledge base with: ' + update_predicate )
-									delete_predicate = "retract( quest_no( '%s', '%s', '%s', _ ) )" % ( npc, self.avatar_name, quest )
-									self.kb.ask( delete_predicate )
-									counter += 1
-									update_predicate = "assert( quest_no( '%s', '%s', '%s', %d ) )" % ( npc, self.avatar_name, quest, counter )
-									self.kb.ask( update_predicate )
-									self.say( 'Updating knowledge base with: ' + update_predicate )
-							except Exception as e:
-								print e
-			elif npc_messages == 'None':
-				self.say( 'No new NPC messages ...' )
-			else:
-				self.say( 'No NPC messages arrived yet ...' )
+			try:
+				if npc_messages:
+					for npc, messages in npc_messages.items():
+						for message in messages:
+							res = self.interpretNPCMessage( npc, message )
+							update, quest, npc = res
+							if npc:
+								print message
+								update_predicate = "assert( npc_message( '%s', '%s', '%s' ) )" % ( self.avatar_name, npc, message.replace( "'", "\\'" ).replace( "\n", " " ) )
+								self.kb.ask( update_predicate )
+								self.say( 'Updating knowledge base with: ' + update_predicate )
+							if update:
+								try:
+									if not self.kb.ask( update % self.avatar_name ) and not self.kb.ask( "solved_quest( '%s' )" % quest ): # if I haven't got this quest already and it isn't solved
+										update_predicate = 'assert( %s )' % update % self.avatar_name
+										self.kb.ask( update_predicate )
+										self.say( 'Updating knowledge base with: ' + update_predicate )
+										sign = self.getQuestSignificance( quest )
+										update_predicate = "assert( quest_sign( '%s', '%s', %d ) )" % ( self.avatar_name, quest, sign )
+										self.kb.ask( update_predicate )
+										self.say( 'Updating knowledge base with: ' + update_predicate )
+										delete_predicate = "retract( quest_no( '%s', '%s', '%s', _ ) )" % ( npc, self.avatar_name, quest )
+										self.kb.ask( delete_predicate )
+										counter += 1
+										update_predicate = "assert( quest_no( '%s', '%s', '%s', %d ) )" % ( npc, self.avatar_name, quest, counter )
+										self.kb.ask( update_predicate )
+										self.say( 'Updating knowledge base with: ' + update_predicate )
+								except Exception as e:
+									print e
+				elif npc_messages == 'None':
+					self.say( 'No new NPC messages ...' )
+				else:
+					self.say( 'No NPC messages arrived yet ...' )
+			except Exception as e:
+				print 'ERROR', e
+
 
 			'''self.say( 'Updating my party membership ...' )
 			party = self.getPartyMembership()
@@ -395,7 +408,6 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 				self.kb.ask( delete_predicate )
 				self.kb.ask( update_predicate )'''
 
-			
 			self.say( 'Updating my social network ...' )
 			soc_net = self.getSocialNetwork()
 			delete_predicate = "retract( social_network( '%s', _, _ ) )" % self.avatar_name
@@ -488,11 +500,17 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def isThereANearMobWithType( self, mobname ):
 		mp, x, y = self.location
-		query = "mob_location( MID, '%s', X, Y, BID ), mob( MID, _, '%s' ), DX is abs( %s - X ), DY is abs( %s - Y ), DX < 6, DY < 6" % ( mp, mobname, x, y )
+		'''query = "mob_location( MID, '%s', X, Y, BID ), mob( MID, _, '%s' ), DX is abs( %s - X ), DY is abs( %s - Y ), DX < 6, DY < 6" % ( mp, mobname, x, y )
 		res = self.kb.ask( query )
 		res = sorted( res, key=lambda x:x[ 'BID' ] )
 		if res:
-			return res[ -1 ]
+			return res'''
+
+		query = "mob( MID, _, '%s' )" % mobname
+		res = self.kb.ask( query )
+		ret = [ { "BID":bid, "X":l[ -1 ][ 1 ], "Y":l[ -1 ][ 2 ] } for bid, l in self.pb.monsterMovements.items() if l[ -1 ][ 0 ] == int( res[ 0 ][ "MID" ] ) ]
+		return sorted( ret, key=lambda x: x[ "BID" ] )
+			
 		
 
 	def act( self, action ):
@@ -607,28 +625,30 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			mobname = action[ 1 ][ 0 ]
 			try:
 				self.say( "Trying to attack a %s ..." % ( mobname ) )
-				for i in range( 10 ): # Retry 10 times
-					mob = self.isThereANearMobWithType( mobname )
-					if mob:
-						monster_ID = int( mob[ "BID" ] )
-						monster_X = int( mob[ "X" ] )
-						monster_Y = int( mob[ "Y" ] )
-						print "MONSTER ID", monster_ID
-						self.setDestination( monster_X, monster_Y, 2 )
-						time.sleep( 1 )
-						self.attack( monster_ID, 7 ) # 7 to keep attacking, 0 for one attack
-						self.setDestination( monster_X - randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
-						self.attack( monster_ID, 7 )
-						time.sleep( 1 )
-						self.setDestination( monster_X + randint( 0, 2 ), monster_Y + randint( 0, 2 ), 2 )
-						self.attack( monster_ID, 7 )
-						time.sleep( 1 )
-						self.setDestination( monster_X - randint( 0, 2 ), monster_Y + randint( 0, 2 ), 2 )
-						self.attack( monster_ID, 7 )
-						time.sleep( 1 )
-						self.setDestination( monster_X + randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
-						self.attack( monster_ID, 7 )
-						time.sleep( 1 )
+				mobs = self.isThereANearMobWithType( mobname )[ ::-1 ] # start with the last mob seen
+				mob = False
+				if mobs:
+					for mob in mobs[ :-3 ] or mobs: # only last 3 mobs
+						for i in range( 5 ): # Retry 5 times
+							monster_ID = int( mob[ "BID" ] )
+							monster_X = int( mob[ "X" ] )
+							monster_Y = int( mob[ "Y" ] )
+							print "MONSTER ID", monster_ID
+							self.setDestination( monster_X, monster_Y, 2 )
+							time.sleep( 1 )
+							self.attack( monster_ID, 7 ) # 7 to keep attacking, 0 for one attack
+							self.setDestination( monster_X - randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
+							self.attack( monster_ID, 7 )
+							time.sleep( 1 )
+							self.setDestination( monster_X + randint( 0, 2 ), monster_Y + randint( 0, 2 ), 2 )
+							self.attack( monster_ID, 7 )
+							time.sleep( 1 )
+							self.setDestination( monster_X - randint( 0, 2 ), monster_Y + randint( 0, 2 ), 2 )
+							self.attack( monster_ID, 7 )
+							time.sleep( 1 )
+							self.setDestination( monster_X + randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
+							self.attack( monster_ID, 7 )
+							time.sleep( 1 )
 					else:
 						self.say( "There are no monsters of this type near me. " )
 				if mob:
@@ -679,8 +699,15 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		''' Test if a quest has been finished '''
 		if quest == 'random_walk':
 			return True
-		query = "solved_quest( '%s' )" % quest
-		return self.kb.ask( query )
+		query = "solved_quest( '%s' ), X = 1" % quest # Little hack to test SWI's state of mind ...
+		time.sleep( 1 )
+		result = self.kb.ask( query )
+		try:
+			#print '!!!!!', result[ 'X' ]
+			if result[ 'X' ] == 1:
+				return True
+		except:
+			return False
 
 	def reconsider( self ):
 		''' Is it time to reconsider my plans? '''
@@ -802,7 +829,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 					self.myAgent.say( "Updating my knowledge base ..." )
 					self.myAgent.updateKB()
 					self.myAgent.say( "Testing if action was successful ..." )
-					success = self.myAgent.actionDone( nextAction )
+					try:
+						success = self.myAgent.actionDone( nextAction )
+					except Exception, e:
+						print "ERROR:", e
 					retries -= 1
 
 				if not success:
