@@ -231,6 +231,85 @@ class randomWalk( ExclusiveBehaviour ):
 		self.release()
 
 
+class inviteToParty( ExclusiveBehaviour ):
+	''' Invite a given player to a party '''
+	def __init__( self, player, party_name, *args, **kwargs ):
+		ExclusiveBehaviour.__init__( self, *args, **kwargs )
+		self.player = player
+		self.party_name = party_name
+
+	def _process( self ):
+		self.wait()
+		self.myAgent.inviteToParty( self.player )
+		self.myAgent.whisper( self.player, 'Oh, you are so cool, please join my party!' )
+		query = "assert( invitation( '%s', '%s', '%s', sent ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
+		self.myAgent.kb.ask( query )
+		self.myAgent.say( 'I have just invited %s to my party called %s.' % ( self.player, self.party_name ) )
+		self.release()
+		
+
+class joinParty( ExclusiveBehaviour ):
+	''' Join a given party per invitation ''' # responseToPartyInvite 1 accept 0 refuse whisper
+	def __init__( self, player, party_name, *args, **kwargs ):
+		ExclusiveBehaviour.__init__( self, *args, **kwargs )
+		self.player = player
+		self.party_name = party_name
+
+	def _process( self ):
+		self.wait()
+		self.myAgent.responseToPartyInvite( 1 )
+		self.myAgent.whisper( self.player, 'Party time!!!' )
+		query = "retract( invitation( '%s', '%s', '%s', _ ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
+		self.myAgent.kb.ask( query )
+		time.sleep( 0.5 )
+		query = "assert( invitation( '%s', '%s', '%s', accepted ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
+		self.myAgent.kb.ask( query )
+		self.myAgent.say( "I have just joined %s's party called %s." % ( self.player, self.party_name ) )
+		self.release()
+
+class declinePartyInvitation( ExclusiveBehaviour ):
+	''' Decline a party invitation '''
+	def __init__( self, player, party_name, *args, **kwargs ):
+		ExclusiveBehaviour.__init__( self, *args, **kwargs )
+		self.player = player
+		self.party_name = party_name
+
+	def _process( self ):
+		self.wait()
+		self.myAgent.responseToPartyInvite( 0 )
+		self.myAgent.whisper( self.player, 'Meh...' )
+		query = "retract( invitation( '%s', '%s', '%s', _ ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
+		self.myAgent.kb.ask( query )
+		time.sleep( 0.5 )
+		query = "assert( invitation( '%s', '%s', '%s', declined ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
+		self.myAgent.kb.ask( query )
+		self.myAgent.say( "I have just refused to join %s's party called %s." % ( self.player, self.party_name ) )
+		self.release()
+
+class createParty( ExclusiveBehaviour ):
+	''' Create a party '''
+	def __init__( self, party_name, *args, **kwargs ):
+		ExclusiveBehaviour.__init__( self, *args, **kwargs )
+		self.party_name = party_name
+
+	def _process( self ):
+		self.wait()
+		self.myAgent.createParty( self.party_name )
+		query = "assert( party( '%s', '%s', founder ) )" % ( self.party_name, self.myAgent.avatar_name )
+		self.myAgent.kb.ask( query )
+		self.myAgent.say( "I have just created my party called %s." % self.party_name )
+		self.release()
+
+class createParty( ExclusiveBehaviour ):
+	''' Leave current party '''
+	def _process( self ):
+		self.wait()
+		self.myAgent.createParty( self.party_name )
+		query = "retract( party( _, '%s', _ ) )" % self.myAgent.avatar_name
+		self.myAgent.kb.ask( query )
+		self.myAgent.say( "I have just left my party." )
+		self.release()
+
 class Reason( spade.Behaviour.Behaviour ):
 	def storeKB( self ):
 		''' Store the current state of the KB for later use '''
@@ -415,13 +494,15 @@ class Reason( spade.Behaviour.Behaviour ):
 			return 9999
 		elif quest == 'outside':
 			return 9998
+		elif quest == 'soul_menhir_candor':
+			return 9997
 		else:
 			# ( yet ) unknown quest
 			return 0
 
 	def getPartyMembership( self ):
 		''' Get party membership
-			Raturns string party name ( -1 if no party, None if no change ) '''
+			Returns string party name ( -1 if no party, None if no change ) '''
 		if not hasattr( self.myAgent, 'party_cache' ):
 			self.myAgent.party_cache = None
 		try:
@@ -677,7 +758,7 @@ class Reason( spade.Behaviour.Behaviour ):
 
 	def selectObjective( self, objectives ):
 		''' Select most relevant objective ( quest ) to be solved next '''
-		query = "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No ), \+ solved_quest( Name )." % ( self.myAgent.avatar_name, self.myAgent.avatar_name )
+		query = "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No ), ( \+ solved_quest( Name ) ; recurring_quest( Name ) )." % ( self.myAgent.avatar_name, self.myAgent.avatar_name )
 		quests = self.myAgent.askBelieve( query )
 		if quests:
 			next = sorted( quests, key=lambda x: x[ 'No' ] )[ 0 ][ 'Name' ]
@@ -730,90 +811,27 @@ class Reason( spade.Behaviour.Behaviour ):
 			b = randomWalk()
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 nearnpc = self.isThereANearByNPC()
-			#	 if nearnpc:
-			#		 npc = nearnpc[ 'NPC' ]
-			#		 npcID = nearnpc[ 'NID' ]
-			#		 mapID = nearnpc[ 'MapName' ]
-			#		 x = int( nearnpc[ 'X' ] )
-			#		 y = int( nearnpc[ 'Y' ] )
-			#		 try:
-			#			 self.myAgent.say( "Going to nearby NPC %s at location %s-%d-%d ..." % ( npc, mapID, x, y ) )
-			#			 self.myAgent.setDestination( x, y, 2 )
-			#			 time.sleep( 2 )
-			#			 self.act( [ 'talkToNPC', [ npcID ]] )
-			#			 return True
-			#		 except Exception as e:
-			#			 print e
-			#			 return False
-			#	 mp, x, y = self.myAgent.location
-			#	 mn, mx = -5, 6
-			#	 x = int( x )
-			#	 y = int( y )
-			#	 x += randint( mn, mx )
-			#	 y += randint( mn, mx )
-			#	 self.myAgent.setDestination( x, y, 2 )
-			#	 time.sleep( 1 )
-			#	 return True
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		elif action[ 0 ] == 'answerNPC':
 			npcID = int( action[ 1 ][ 0 ] )
 			answer = int( action[ 1 ][ 1 ] )
 			b = AnswerNPC( npcID, answer )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 self.myAgent.say( "Answering to NPC %d with %d ..." % ( npcID, answer ) )
-			#	 self.myAgent.answerToNPC( npcID, answer )
-			#	 time.sleep( 1 )
-			#	 return True
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		elif action[ 0 ] == 'stopTalkingToNPC':
 			npcID = int( action[ 1 ][ 0 ] )
 			b = stopTalkingToNPC( npcID )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 self.myAgent.say( "Stopping communication with NPC %d ..." % npcID )
-			#	 self.myAgent.closeCommunication( npcID )
-			#	 return True
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		elif action[ 0 ] == 'stopTalkingToNPCSorfina':
 			npcID = int( action[ 1 ][ 0 ] )
 			b = stopTalkingToNPC( npcID )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 self.myAgent.say( "Stopping communication with NPC %d ..." % npcID )
-			#	 self.myAgent.closeCommunication( npcID )
-			#	 return True
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		elif action[ 0 ] == 'talkToNPC':
 			npcID = int( action[ 1 ][ 0 ] )
 			b = talkToNPC( npcID )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 self.myAgent.say( "Talking to NPC %d ..." % npcID )
-			#	 self.myAgent.talkToNPC( npcID )
-			#	 return True
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		elif action[ 0 ] == 'goToNPC':
 			# TODO: implement navigation to other maps when necessary
 			npc = action[ 1 ][ 0 ]
@@ -823,15 +841,6 @@ class Reason( spade.Behaviour.Behaviour ):
 			b = goToNPC( npc, mapID, x, y )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 self.myAgent.say( "Going to NPC %s at location %s-%d-%d ..." % ( npc, mapID, x, y ) )
-			#	 self.myAgent.setDestination( x, y, 2 )
-			#	 time.sleep( 2 )
-			#	 return True
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		elif action[ 0 ] == 'goToLocation' or action[ 0 ] == 'tryToGoToLocation':
 			# TODO: implement navigation to other maps when necessary
 			mapID = action[ 1 ][ 0 ]
@@ -840,70 +849,16 @@ class Reason( spade.Behaviour.Behaviour ):
 			b = goToLocation( mapID, x, y )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 self.myAgent.say( "Going to location %s-%d-%d ..." % ( mapID, x, y ) )
-			#	 self.myAgent.setDestination( x, y, 2 )
-			#	 time.sleep( 2 )
-			#	 return True
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		elif action[ 0 ] == 'equipItem':
 			slot = int( action[ 1 ][ 0 ] )
 			b = equipItem( slot )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 self.myAgent.say( "Trying to equip item in slot %d ..." % ( slot ) )
-			#	 self.myAgent.itemEquip( slot )
-			#	 time.sleep( 1 )
-			#	 return True
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		elif action[ 0 ] == 'killMob':
 			mobname = action[ 1 ][ 0 ]
 			b = killMob( mobname )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			# return self.myAgent.result
-			# try:
-			#	 self.myAgent.say( "Trying to attack a %s ..." % ( mobname ) )
-			#	 mobs = self.isThereANearMobWithType( mobname )[ ::-1 ] # start with the last mob seen
-			#	 mob = False
-			#	 if mobs:
-			#		 for mob in mobs[ :-3 ] or mobs: # only last 3 mobs
-			#			 for i in range( 5 ): # Retry 5 times
-			#				 monster_ID = int( mob[ "BID" ] )
-			#				 monster_X = int( mob[ "X" ] )
-			#				 monster_Y = int( mob[ "Y" ] )
-			#				 print "MONSTER ID", monster_ID
-			#				 self.myAgent.setDestination( monster_X, monster_Y, 2 )
-			#				 time.sleep( 1 )
-			#				 self.myAgent.attack( monster_ID, 7 ) # 7 to keep attacking, 0 for one attack
-			#				 self.myAgent.setDestination( monster_X - randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
-			#				 self.myAgent.attack( monster_ID, 7 )
-			#				 time.sleep( 1 )
-			#				 self.myAgent.setDestination( monster_X + randint( 0, 2 ), monster_Y + randint( 0, 2 ), 2 )
-			#				 self.myAgent.attack( monster_ID, 7 )
-			#				 time.sleep( 1 )
-			#				 self.myAgent.setDestination( monster_X - randint( 0, 2 ), monster_Y + randint( 0, 2 ), 2 )
-			#				 self.myAgent.attack( monster_ID, 7 )
-			#				 time.sleep( 1 )
-			#				 self.myAgent.setDestination( monster_X + randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
-			#				 self.myAgent.attack( monster_ID, 7 )
-			#				 time.sleep( 1 )
-			#		 else:
-			#			 self.myAgent.say( "There are no monsters of this type near me. " )
-			#	 if mob:
-			#		 return True
-			#	 self.myAgent.say( "There are no monsters of this type near me. Giving up." )
-			#	 return False
-			# except Exception as e:
-			#	 print e
-			#	 return False
 		
 
 

@@ -9,7 +9,8 @@
 :- dynamic waiting_quest/3.
 :- dynamic solved_quest/1.
 :- dynamic npc_message/3.
-:- dynamic party/2.
+:- dynamic party/3. % party_name, player_name, status (founder/member)
+:- dynamic invitation/4. % party, from player name, to player name, status (sent/accepted/declined)
 :- dynamic social_network/3.
 :- dynamic slot/4.
 :- dynamic agent_location/4. % The current agent
@@ -157,6 +158,8 @@ plan_quest( 'soul_menhir_candor', Plan ) :-
 	A01 = answerNPC( 'Soul Menhir#candor', 1 ),
 	A02 = stopTalkingToNPC( 'Soul Menhir#candor' ),
 	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].
+
+recurring_quest( 'soul_menhir_candor' ).
 
 /* Kaan */
 plan_quest( 'kaan', Plan ) :-
