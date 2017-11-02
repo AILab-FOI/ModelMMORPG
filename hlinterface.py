@@ -157,9 +157,12 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		    for the knowledge base where %s is a place to insert the agent's 
 		    character name '''
 
-		query = "npc_id( %s, Name )" % npc
-		res = self.kb.ask( query )
-		npc = res[ 0 ][ "Name" ]
+		try:
+			query = "npc_id( %s, Name )" % npc
+			res = self.kb.ask( query )
+			npc = res[ 0 ][ "Name" ]
+		except:
+			pass
 		
 		# TODO: Also interpret other messages as possible preconditions for other actions
 		if npc == 'ServerInitial':
