@@ -142,8 +142,13 @@ class killMob( ExclusiveBehaviour ):
 		query = "mob( MID, _, '%s' )" % mobname
 		res = self.myAgent.kb.ask( query )
 		ret = [ { "BID": bid, "X": l[ -1 ][ 1 ], "Y": l[ -1 ][ 2 ] } for bid, l in self.myAgent.pb.monsterMovements.items() if l[ -1 ][ 0 ] == int( res[ 0 ][ "MID" ] ) ]
-		print '*'*20, ret
 		return sorted( ret, key=lambda x: x[ "BID" ] )
+
+	def amIDone( self, location ):
+		while self.myAgent.location == None:
+			self.myAgent.getMyLocation()
+			time.sleep( 0.1 )
+		return location == self.myAgent.location
 
 	def _process( self ):
 		self.wait()
@@ -173,9 +178,21 @@ class killMob( ExclusiveBehaviour ):
 						self.myAgent.setDestination( monster_X + randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
 						self.myAgent.attack( monster_ID, 7 )
 						time.sleep( 1 )
+						if self.amIDone( self.myAgent.destinationNPC ):
+							self.myAgent.say( "I'm done fighting already!" )
+							break
+					if self.amIDone( self.myAgent.destinationNPC ):
+						self.myAgent.say( "I'm done fighting already!!" )
+						break
 				if not mob:
 					self.myAgent.say( "There are no monsters of type %s near me. " % self.mobname )
 			else:
+				while self.myAgent.location == None:
+					location = self.myAgent.getMyLocation()
+					time.sleep( 0.1 )
+				mp, x, y = self.myAgent.location
+				self.myAgent.say( "I do not seem to see any %s monsters, I'll try to move a bit ..." % self.mobname )
+				self.myAgent.setDestination( int( x ) + choice( [ -1, 1 ] ), int( y ) + choice( [ -1, 1 ] ), 2 ) # try to move the agent a bit
 				self.myAgent.say( "There are no monsters of this type near me. Giving up." )
 			self.myAgent.result = True 
 		except Exception as e:
@@ -188,7 +205,7 @@ class randomWalk( ExclusiveBehaviour ):
 	"""Randomly walk around until something interesting comes up"""
 	def isThereANearByNPC( self ):
 		mp, x, y = self.myAgent.location
-		query = "MapName = '%s', npc_location( NPC, MapName, X, Y ), npc( _, NPC, MapName, X, Y ), npc_id( NID, NPC ), DX is abs( X - %s ), DY is abs( Y - %s ), DX < 6, DY < 6." % ( mp, x, y )
+		query = "MapName = '%s', npc_location( NPC, MapName, X, Y ), \+ visited_npc( NPC ), npc( _, NPC, MapName, X, Y ), npc_id( NID, NPC ), DX is abs( X - %s ), DY is abs( Y - %s ), DX < 6, DY < 6." % ( mp, x, y )
 		res = self.myAgent.kb.ask( query )
 		if res:
 			return choice( res )
@@ -203,6 +220,7 @@ class randomWalk( ExclusiveBehaviour ):
 				mapID = nearnpc[ 'MapName' ]
 				x = int( nearnpc[ 'X' ] )
 				y = int( nearnpc[ 'Y' ] )
+				self.myAgent.say( 'Trying to go to NPC: %s' % npc )
 				try:
 					b = goToNPC( npc, mapID, x, y )
 					self.myAgent.addBehaviour( b )
@@ -215,12 +233,20 @@ class randomWalk( ExclusiveBehaviour ):
 					print e
 					self.myAgent.result = False
 			else:
-				mp, x, y = self.myAgent.location
-				mn, mx = -5, 6
-				x = int( x )
-				y = int( y )
-				x += randint( mn, mx )
-				y += randint( mn, mx )
+				query = "randomWalk( '%s', Map, X, Y ), !." % self.myAgent.avatar_name
+				res = self.myAgent.kb.ask( query )
+				if res:
+					res = res[ 0 ]
+					mp = res[ 'Map' ]
+					x = int( res[ 'X' ] )
+					y = int( res[ 'Y' ] )
+				else:
+					mp, x, y = self.myAgent.location
+					mn, mx = -5, 6
+					x = int( x )
+					y = int( y )
+					x += randint( mn, mx )
+					y += randint( mn, mx )
 				b = goToLocation( mp, x, y )
 				self.myAgent.addBehaviour( b )
 				time.sleep( 1 )
@@ -300,7 +326,7 @@ class createParty( ExclusiveBehaviour ):
 		self.myAgent.say( "I have just created my party called %s." % self.party_name )
 		self.release()
 
-class createParty( ExclusiveBehaviour ):
+class leaveParty( ExclusiveBehaviour ):
 	''' Leave current party '''
 	def _process( self ):
 		self.wait()
@@ -412,24 +438,6 @@ class Reason( spade.Behaviour.Behaviour ):
 		except:
 			return {}
 
-	def getMyLocation( self ):
-		''' Get player location
-			Returns tuple ( mapID, X, Y ) '''
-		if not hasattr( self.myAgent, 'location' ):
-			self.myAgent.location = None
-		try:
-			self.myAgent.locatePlayer()
-			time.sleep( 0.5 )
-			if self.myAgent.location == ( self.myAgent.pb.playerMap, self.myAgent.pb.playerPosX, self.myAgent.pb.playerPosY ):
-				return None
-			self.myAgent.location = ( self.myAgent.pb.playerMap, self.myAgent.pb.playerPosX, self.myAgent.pb.playerPosY )
-			if self.myAgent.location[ 0 ]:
-				return self.myAgent.location
-			else:
-				return ()
-		except:
-			return ()
-
 	def getNewNPCMessages( self ):
 		''' Get new NPC messages '''
 		if not hasattr( self.myAgent, 'npcmsg_cache' ):
@@ -497,7 +505,7 @@ class Reason( spade.Behaviour.Behaviour ):
 		elif quest == 'soul_menhir_candor':
 			return 9997
 		else:
-			# ( yet ) unknown quest
+			# (yet) unknown quest
 			return 0
 
 	def getPartyMembership( self ):
@@ -568,7 +576,7 @@ class Reason( spade.Behaviour.Behaviour ):
 
 
 			self.myAgent.say( 'Updating my location ...' )
-			location = self.getMyLocation()
+			location = self.myAgent.getMyLocation()
 			if location:
 				mapname, x, y = location
 				delete_predicate = "retract( agent_location( _, _, _, _ ) )"
@@ -741,9 +749,8 @@ class Reason( spade.Behaviour.Behaviour ):
 			self.myAgent.say( "My avatar hasn't loaded yet ..." )
 			time.sleep( 1 )
 			return None
-		self.quests = self.myAgent.askBelieve( 
-			"waiting_quest( NPC, '%s', Name )." % self.myAgent.avatar_name )
-		time.sleep( 1 )
+		self.quests = self.myAgent.askBelieve( "waiting_quest( NPC, '%s', Name )." % self.myAgent.avatar_name )
+		time.sleep( 3 )
 		if self.quests:
 			self.myAgent.say( 'My current quests are:' )
 			for quest in self.quests:
@@ -754,26 +761,38 @@ class Reason( spade.Behaviour.Behaviour ):
 			return self.quests
 		else:
 			self.myAgent.say( 'I have no current quests!' )
-			return [ {'Name': 'random_walk', 'NPC': 'anonymous'} ]
+			if random() > 0.5:
+				return [ {'Name': 'random_walk', 'NPC': 'anonymous'} ]
+			else:
+				self.myAgent.say( 'Trying to stop talking to some NPC!' )
+				query = "assert( waiting_quest( 'common wisdom', '%s', stop_talking ) )" % self.myAgent.avatar_name
+				self.myAgent.askBelieve( query )
+				return [ {'Name': 'stop_talking', 'NPC': 'common wisdom'} ]
+
+	def addDestinationNPC( self, quest ):
+		self.myAgent.destinationNPC = None
+		if quest == 'maggots':
+			self.myAgent.destinationNPC = ( '029-2', 110, 88 )
 
 	def selectObjective( self, objectives ):
 		''' Select most relevant objective ( quest ) to be solved next '''
-		query = "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No ), ( \+ solved_quest( Name ) ; recurring_quest( Name ) )." % ( self.myAgent.avatar_name, self.myAgent.avatar_name )
+		query = "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No ), \+ solved_quest( Name )." % ( self.myAgent.avatar_name, self.myAgent.avatar_name )
 		quests = self.myAgent.askBelieve( query )
 		if quests:
 			next = sorted( quests, key=lambda x: x[ 'No' ] )[ 0 ][ 'Name' ]
 			self.myAgent.say( 'My next objective is quest: ' + next )
+			self.addDestinationNPC( next )
 			return next
 		time.sleep( 1 )
 
 	def getNextAction( self, quest ):
 		''' Derive the next action of the current quest '''
 		if quest == 'random_walk':
-			return [ 'randomWalk', [ ] ]
+			return [ 'randomWalk', [] ]
 		time.sleep( 1 )
 		query = "next_action( _action ), do_action( _action, Action, _params ), member( Param, _params )"
 		res = self.myAgent.kb.ask( query )
-		# print res
+
 		if res:
 			action = [ 1, [ ] ]
 			for r in res:
@@ -876,14 +895,14 @@ class Reason( spade.Behaviour.Behaviour ):
 			return True # TODO: Proove this
 		elif action[ 0 ] == 'goToLocation':
 			time.sleep( 2 )
-			self.getMyLocation()
+			self.myAgent.getMyLocation()
 			return self.myAgent.location == tuple( action[ 1 ] ) # returns True if the agent has arrived
 		elif action[ 0 ] == 'tryToGoToLocation':
 			time.sleep( 1 )
 			return True # This is just a try to get the next NPC message
 		elif action[ 0 ] == 'goToNPC':
 			time.sleep( 2 )
-			self.getMyLocation()
+			self.myAgent.getMyLocation()
 			print 'My location', self.myAgent.location
 			print 'My destination', tuple( action[ 1 ][ 1: ] )
 			return self.myAgent.location == tuple( action[ 1 ][ 1: ] ) # returns True if the agent has arrived
@@ -951,47 +970,6 @@ class Reason( spade.Behaviour.Behaviour ):
 
 			self.myAgent.login_complete = True
 
-		# Move the agent to get the first quest
-		# TODO: Remove this later when we setup
-		# saving and loading of agent's state
-
-		'''self.myAgent.setDestination( 23, 24, 2 )
-		time.sleep( 1 )
-		self.myAgent.answerToNPC( 110008658, 1 )
-		time.sleep( 1 )
-		self.myAgent.setDestination( 27, 27, 2 )
-		time.sleep( 2 )
-		self.myAgent.answerToNPC( 110008654, 1 )
-		time.sleep( 1 )
-		self.myAgent.answerToNPC( 110008654, 1 )
-		time.sleep( 1 )
-		self.myAgent.answerToNPC( 110008654, 1 )
-		time.sleep( 1 )
-		self.myAgent.setDestination( 33, 27, 2 )
-		time.sleep( 2 )
-		self.myAgent.setDestination( 44, 30, 2 )
-		time.sleep( 2 )
-		self.myAgent.closeCommunication( 110008655 )
-		time.sleep( 1 )
-		self.myAgent.setDestination( 29, 24, 2 )
-		time.sleep( 3 )
-		self.myAgent.talkToNPC( 110008656 )
-		time.sleep( 2 )
-		self.myAgent.closeCommunication( 110008656 )
-		time.sleep( 1 )
-		self.myAgent.itemEquip( 2 )
-		time.sleep( 1 )
-		self.myAgent.itemEquip( 3 )
-		time.sleep( 1 )
-		self.myAgent.setDestination( 27, 27, 2 )
-		time.sleep( 2 )
-		self.myAgent.talkToNPC( 110008654 )
-		time.sleep( 1 )
-		self.myAgent.closeCommunication( 110008654 )
-		time.sleep( 1 )
-		self.myAgent.setDestination( 44, 31, 2 )
-		time.sleep( 2 )'''
-
 		self.myAgent.say( 'Updating my knowledge base ...' )
 		self.updateKB()
 
@@ -1001,6 +979,8 @@ class Reason( spade.Behaviour.Behaviour ):
 		if obj and obj[ 0 ][ 'Name' ] != 'random_walk':
 			next = self.selectObjective( obj )
 		else:
+			next = 'random_walk'
+		if next == 'None' or not next:
 			next = 'random_walk'
 		self.myAgent.say( 'Planning quest "%s" ...' % next )
 		start = self.planQuest( next )

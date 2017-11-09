@@ -1,6 +1,7 @@
 /* The Mana World Planner
    Currently only for Candor Quests */
 
+:- use_module( library( random ) ).
 
 :- dynamic current_quest/1.
 :- dynamic current_action/2.
@@ -70,6 +71,21 @@ do_action( equipItem( ItemName ), equipItem, [ ItemSlot ] ) :-
 	item( ItemID, _, ItemName ).
 
 do_action( killMob( MobName ), killMob, [ MobName ] ).
+
+/* Random walk on a given map (avoiding blocked places) */
+
+max_dist( 6 ).
+
+randomWalk( Agent, Map, X, Y ) :-
+	agent_location( Agent, Map, X1, Y1 ),
+	max_dist( MD ),
+	Xp is X1 + MD,
+	Yp is Y1 + MD,
+	Xn is X1 - MD,
+	Yn is Y1 - MD,
+	random_between( Xn, Xp, X ),
+	random_between( Yn, Yp, Y ),
+	\+ blocked( Map, X, Y ).
 
 /*
 
@@ -184,6 +200,21 @@ plan_quest( 'stop_taking', Plan ) :-
 	A01 = stopTalkingToNPC( NPC ),
 	Plan = [ a( 1, A01 ) ].	
 
+recurring_quest( 'stop_talking' ).
+
+/* Random walk */
+plan_quest( 'random_walk', Plan ) :-
+	waiting_quest( NPC, _, random_walk ),
+	A01 = goToRandomLocationOnMap,
+	Plan = ( a( 1, A01 ) ).
+
+plan_quest( 'random_walk', Plan ) :-
+	waiting_quest( NPC, _, random_walk ),
+	A01 = goToNearByNPC,
+	Plan = ( a( 1, A01 ) ).
+
+
+
 /* Auxiliary predicates */
 
 sort_quests( A ) :-
@@ -242,4 +273,10 @@ store( File ) :-
 	open( File, write, Out ),
 	with_output_to( Out, listing ),
 	close( Out ).
+
+visited_npc( NPC ) :-
+	quest_no( NPC, _, Quest, _ ),
+	solved_quest( Quest ),
+	\+ recurring_quest( Quest ).
+	
 
