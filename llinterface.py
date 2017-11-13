@@ -14,7 +14,7 @@ import os
 findp_re = re.compile( r'Name: ([^\(]+) .* ?\| Location: ([0-9]+[-][0-9]+) ([0-9]+) ([0-9]+)' )
 findpp_re = re.compile( r"Name: ([^\(]+) .* ?\| Party: [\'](.*)[\']" )
 
-DEBUG = True
+DEBUG = False
 CHARACTER = None
 
 def debug( *msg ):
@@ -1532,7 +1532,7 @@ class Connection:
 		self.srv.sendall( "\xef\x00")
 
 	def answerToNPC(self, npcID, answer):
-		print self.srv.sendall( "\xb8\x00%s" % (struct.pack("<LB", npcID, answer)))
+		self.srv.sendall( "\xb8\x00%s" % (struct.pack("<LB", npcID, answer)))
 		debug( 'Answered to NPC %d with answer %d' % ( npcID, answer ) )
 		
 	def closeCommunication(self, npcID):

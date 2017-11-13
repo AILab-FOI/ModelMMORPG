@@ -32,7 +32,7 @@ class AnswerNPC( ExclusiveBehaviour ):
 			time.sleep( 1 )
 			self.myAgent.result = True
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.result = False
 		self.release()
 
@@ -50,7 +50,7 @@ class stopTalkingToNPC( ExclusiveBehaviour ):
 			self.myAgent.closeCommunication( self.npcID )
 			self.myAgent.result = True
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.result = False
 		self.release()
 
@@ -68,7 +68,7 @@ class talkToNPC( ExclusiveBehaviour ):
 			self.myAgent.talkToNPC( self.npcID )
 			self.myAgent.result = True
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.result = False
 		self.release()
 
@@ -84,10 +84,12 @@ class goToNPC( ExclusiveBehaviour ):
 		try:
 			self.myAgent.say( "Going to NPC %s at location %s %d-%d ..." % ( self.npc, self.mapID, self.x, self.y ) )
 			self.myAgent.setDestination( self.x, self.y, 2 )
+			query = "assert( been_at( '%s' ) )" % self.npc
+			self.myAgent.kb.ask( query )
 			time.sleep( 2 )
 			self.myAgent.result = True
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.result = False
 		self.release()
 
@@ -106,7 +108,7 @@ class goToLocation( ExclusiveBehaviour ):
 			time.sleep( 2 )
 			self.myAgent.result = True
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.result = False
 		self.release()
 
@@ -125,7 +127,7 @@ class equipItem( ExclusiveBehaviour ):
 			time.sleep( 1 )
 			self.myAgent.result = True
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.result = False
 		self.release()
 
@@ -162,7 +164,7 @@ class killMob( ExclusiveBehaviour ):
 						monster_ID = int( mob[ "BID" ] )
 						monster_X = int( mob[ "X" ] )
 						monster_Y = int( mob[ "Y" ] )
-						print "MONSTER ID", monster_ID
+						self.myAgent.say( "Monster ID: " + str( monster_ID ) )
 						self.myAgent.setDestination( monster_X, monster_Y, 2 )
 						time.sleep( 1 )
 						self.myAgent.attack( monster_ID, 7 )  # 7 to keep attacking, 0 for one attack
@@ -196,7 +198,7 @@ class killMob( ExclusiveBehaviour ):
 				self.myAgent.say( "There are no monsters of this type near me. Giving up." )
 			self.myAgent.result = True 
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.result = False
 		self.release()
 
@@ -205,7 +207,7 @@ class randomWalk( ExclusiveBehaviour ):
 	"""Randomly walk around until something interesting comes up"""
 	def isThereANearByNPC( self ):
 		mp, x, y = self.myAgent.location
-		query = "MapName = '%s', npc_location( NPC, MapName, X, Y ), \+ visited_npc( NPC ), npc( _, NPC, MapName, X, Y ), npc_id( NID, NPC ), DX is abs( X - %s ), DY is abs( Y - %s ), DX < 6, DY < 6." % ( mp, x, y )
+		query = "MapName = '%s', npc_location( NPC, MapName, X, Y ), \+ been_at( NPC ), npc( _, NPC, MapName, X, Y ), npc_id( NID, NPC ), DX is abs( X - %s ), DY is abs( Y - %s ), DX < 6, DY < 6." % ( mp, x, y )
 		res = self.myAgent.kb.ask( query )
 		if res:
 			return choice( res )
@@ -230,7 +232,7 @@ class randomWalk( ExclusiveBehaviour ):
 					self.myAgent.addBehaviour( b )
 					self.myAgent.result = True
 				except Exception as e:
-					print e
+					print 'ERROR', e
 					self.myAgent.result = False
 			else:
 				query = "randomWalk( '%s', Map, X, Y ), !." % self.myAgent.avatar_name
@@ -252,10 +254,14 @@ class randomWalk( ExclusiveBehaviour ):
 				time.sleep( 1 )
 				self.myAgent.result = True
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.result = False
 		self.release()
 
+
+class FindPlayer( ExclusiveBehaviour ):
+	''' Find a nearby player '''
+	pass
 
 class inviteToParty( ExclusiveBehaviour ):
 	''' Invite a given player to a party '''
@@ -378,17 +384,17 @@ class Reason( spade.Behaviour.Behaviour ):
 		if not hasattr( self.myAgent, 'mobs_cache' ):
 			self.myAgent.mobs_cache = None
 		try:
-			print 'Monster movements ( agent ):', self.myAgent.pb.monsterMovements
-			print 'Update cache?:', self.myAgent.mobs_cache == self.myAgent.pb.monsterMovements
+			self.myAgent.say( 'Monster movements ( agent ): ' + str( self.myAgent.pb.monsterMovements ) )
+			self.myAgent.say( 'Update cache?: ' + str( self.myAgent.mobs_cache == self.myAgent.pb.monsterMovements ) )
 			if self.myAgent.mobs_cache == self.myAgent.pb.monsterMovements:
-				print 'Nothing to update'
+				self.myAgent.say( 'Nothing to update' )
 				return None
 			self.myAgent.mobs_cache = dict( [ ( i, j ) for i, j in self.myAgent.pb.monsterMovements.items() ] )
 			mobs = dict( [ ( i, ( k[ -1 ][ 0 ], self.myAgent.pb.playerMap, k[ -1 ][ 1 ], k[ -1 ][ 2 ] ) ) for i, k in self.myAgent.mobs_cache.items() ] )
-			print 'Returning', mobs
+			self.myAgent.say( 'Returning ' + str( mobs ) )
 			return mobs
 		except Exception, e:
-			print e
+			print 'ERROR', e
 			return None
 
 	def getVisibleNPCs( self, recursion_level=0 ):
@@ -407,15 +413,12 @@ class Reason( spade.Behaviour.Behaviour ):
 		self.myAgent.say( "Querying knowledge base with: " + query )
 		res = self.myAgent.kb.ask( query )
 		NPCs = {}
-		# TODO: Remove debug message comments
-		# print res
 		if res:
 			for r in res:
 				if 'Name' in r:
 					if 'Debug' not in r[ 'Name' ]:
 						NPCs[ r[ 'Name' ]] = ( self.myAgent.location[ 0 ], r[ 'X' ], r[ 'Y' ], r[ 'Type' ] )
 		else:
-			print 'Trying again', recursion_level, MAX_RECURSION
 			if recursion_level <= MAX_RECURSION:
 				time.sleep( 1 )
 				return self.getVisibleNPCs( recursion_level + 1 )
@@ -488,8 +491,10 @@ class Reason( spade.Behaviour.Behaviour ):
 			return "waiting_quest( 'Soul Menhir#candor', '%s', soul_menhir_candor )", "soul_menhir_candor", "Soul Menhir#candor"
 		elif npc == 'Kaan':
 			return "waiting_quest( 'Kaan', '%s', kaan )", "kaan", "Kaan"
-		elif npc == 'Aiden':
-			return "waiting_quest( 'Aiden', '%s', monster_points )", "monster_points", "Aiden"
+		elif npc == 'Aidan':
+			return "waiting_quest( 'Aidan', '%s', monster_points )", "monster_points", "Aidan"
+		elif npc == 'Ferry Schedule#8':
+			return "waiting_quest( 'Ferry Schedule#8', '%s', ferry_schedule_8 )", "ferry_schedule_8", "Ferry Schedule#8"
 		return "waiting_quest( '%s', '%s', stop_talking )" % npc, "stop_talking", npc
 
 	def getQuestSignificance( self, quest ):
@@ -500,10 +505,12 @@ class Reason( spade.Behaviour.Behaviour ):
 			return 10000
 		elif quest == 'maggots':
 			return 9999
-		elif quest == 'outside':
+		elif quest == 'stop_talking':
 			return 9998
 		elif quest == 'soul_menhir_candor':
 			return 9997
+		elif quest == 'ferry_schedule_8':
+			return 9996
 		else:
 			# (yet) unknown quest
 			return 0
@@ -675,7 +682,7 @@ class Reason( spade.Behaviour.Behaviour ):
 			try:
 				npc_messages = self.getNewNPCMessages()
 			except Exception as e:
-				print e
+				print 'ERROR', e
 			counter = 1
 			try:
 				if npc_messages:
@@ -704,7 +711,7 @@ class Reason( spade.Behaviour.Behaviour ):
 										self.myAgent.kb.ask( update_predicate )
 										self.myAgent.say( 'Updating knowledge base with: ' + update_predicate )
 								except Exception as e:
-									print e
+									print 'ERROR', e
 				elif npc_messages == 'None':
 					self.myAgent.say( 'No new NPC messages ...' )
 				else:
@@ -745,7 +752,7 @@ class Reason( spade.Behaviour.Behaviour ):
 		try:
 			self.myAgent.say( 'My avatar name is ' + self.myAgent.avatar_name )
 		except Exception as e:
-			print e
+			print 'ERROR', e
 			self.myAgent.say( "My avatar hasn't loaded yet ..." )
 			time.sleep( 1 )
 			return None
@@ -903,8 +910,8 @@ class Reason( spade.Behaviour.Behaviour ):
 		elif action[ 0 ] == 'goToNPC':
 			time.sleep( 2 )
 			self.myAgent.getMyLocation()
-			print 'My location', self.myAgent.location
-			print 'My destination', tuple( action[ 1 ][ 1: ] )
+			self.myAgent.say( 'My location ' + str( self.myAgent.location ) )
+			self.myAgent.say( 'My destination ' + str( tuple( action[ 1 ][ 1: ] ) ) )
 			return self.myAgent.location == tuple( action[ 1 ][ 1: ] ) # returns True if the agent has arrived
 		if action[ 0 ] == 'killMob':
 			time.sleep( 5 ) # TODO: Proove this
@@ -924,7 +931,6 @@ class Reason( spade.Behaviour.Behaviour ):
 		time.sleep( 1 )
 		result = self.myAgent.kb.ask( query )
 		try:
-			# print '!!!!!', result[ 'X' ]
 			if result[ 'X' ] == 1:
 				return True
 		except:
@@ -1053,7 +1059,7 @@ class Reason( spade.Behaviour.Behaviour ):
 				try:
 					obj = self.updateObjectives()
 				except Exception as e:
-					print e
+					print 'ERROR', e
 				self.myAgent.say( 'Selecting an objective ...' )
 				if obj and obj[ 0 ][ 'Name' ] != 'random_walk':
 					newnext = self.selectObjective( obj )

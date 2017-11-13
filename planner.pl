@@ -22,6 +22,7 @@
 :- dynamic mob_location/5.
 :- dynamic item_location/5.
 :- dynamic ownership/3.
+:- dynamic been_at/1.
 
 /*
 Actions:
@@ -35,7 +36,7 @@ Actions:
  Stop talking to NPC
  Pick up item
  Equip item
- Fund mob
+ Find mob
  Attack mob
  Talk to player
  Trade with player
@@ -73,7 +74,6 @@ do_action( equipItem( ItemName ), equipItem, [ ItemSlot ] ) :-
 do_action( killMob( MobName ), killMob, [ MobName ] ).
 
 /* Random walk on a given map (avoiding blocked places) */
-
 max_dist( 6 ).
 
 randomWalk( Agent, Map, X, Y ) :-
@@ -173,7 +173,16 @@ plan_quest( 'maggots', Plan ) :-
 plan_quest( 'soul_menhir_candor', Plan ) :-
 	A01 = answerNPC( 'Soul Menhir#candor', 1 ),
 	A02 = stopTalkingToNPC( 'Soul Menhir#candor' ),
-	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].
+	A03 = tryToGoToLocation( '029-1', 42, 96 ),
+	Plan = [ a( 1, A01 ),   a( 2, A02 ),   a( 3, A03 ) ].
+
+
+/* Ferry Schedule#8 */
+plan_quest( 'ferry_schedule_8', Plan ) :- 
+	A01 = answerNPC( 'Ferry Schedule#8', 1 ),
+	A02 = stopTalkingToNPC( 'Ferry Schedule#8' ),
+	A03 = tryToGoToLocation( '029-1', 42, 96 ),
+	Plan = [ a( 1, A01 ),   a( 2, A02 ),   a( 3, A03 ) ].
 
 recurring_quest( 'soul_menhir_candor' ).
 
@@ -183,14 +192,14 @@ plan_quest( 'kaan', Plan ) :-
 	A02 = stopTalkingToNPC( 'Kaan' ),
 	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].	
 
-/* Aiden's quest - monster points */
+/* Aidan's quest - monster points */
 plan_quest( 'monster_points', Plan ) :-
-	A01 = answerNPC( 'Aiden', 1 ),
-	A02 = answerNPC( 'Aiden', 1 ), % next, next, next, next (4 times)
-	A03 = stopTalkingToNPC( 'Aiden' ), 
-	A04 = stopTalkingToNPC( 'Aiden' ), 
-	A05 = stopTalkingToNPC( 'Aiden' ), 
-	A06 = stopTalkingToNPC( 'Aiden' ),
+	A01 = answerNPC( 'Aidan', 1 ),
+	A02 = answerNPC( 'Aidan', 1 ), % next, next, next, next (4 times)
+	A03 = stopTalkingToNPC( 'Aidan' ), 
+	A04 = stopTalkingToNPC( 'Aidan' ), 
+	A05 = stopTalkingToNPC( 'Aidan' ), 
+	A06 = stopTalkingToNPC( 'Aidan' ),
 	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
 		 a( 5, A05 ),   a( 6, A06 ) ].
 
