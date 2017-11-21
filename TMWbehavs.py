@@ -147,6 +147,7 @@ class killMob( ExclusiveBehaviour ):
 		return sorted( ret, key=lambda x: x[ "BID" ] )
 
 	def amIDone( self, location ):
+		'''A little heuristic to determine if the fight is done'''
 		while self.myAgent.location == None:
 			self.myAgent.getMyLocation()
 			time.sleep( 0.1 )
@@ -180,6 +181,7 @@ class killMob( ExclusiveBehaviour ):
 						self.myAgent.setDestination( monster_X + randint( 0, 2 ), monster_Y - randint( 0, 2 ), 2 )
 						self.myAgent.attack( monster_ID, 7 )
 						time.sleep( 1 )
+						self.myAgent.takeAllDroppedItems()
 						if self.amIDone( self.myAgent.destinationNPC ):
 							self.myAgent.say( "I'm done fighting already!" )
 							break
@@ -336,7 +338,7 @@ class leaveParty( ExclusiveBehaviour ):
 	''' Leave current party '''
 	def _process( self ):
 		self.wait()
-		self.myAgent.createParty( self.party_name )
+		self.myAgent.leaveParty( self.party_name )
 		query = "retract( party( _, '%s', _ ) )" % self.myAgent.avatar_name
 		self.myAgent.kb.ask( query )
 		self.myAgent.say( "I have just left my party." )
@@ -431,14 +433,22 @@ class Reason( spade.Behaviour.Behaviour ):
 			self.myAgent.players_cache = None
 		try:
 			self.myAgent.listAllPlayers()
-			time.sleep( 1 )
+			counter = 10
+			while not self.myAgent.pb.loggedInPlayers and counter > 0:
+				self.myAgent.listAllPlayers()
+				time.sleep( 1 )
+				self.myAgent.say( "Trying to list all players ..." )
+				counter -= 1
+			#self.myAgent.say( "Logged in players are %s" % str( self.myAgent.pb.loggedInPlayers ) )
 			if self.myAgent.players_cache == self.myAgent.pb.loggedInPlayers:
 				return None
-			self.myAgent.players_cache = self.myAgent.pb.loggedInPlayers
+			self.myAgent.players_cache = dict( [ ( i[ 0 ], i[ 1 ] ) for i in self.myAgent.pb.loggedInPlayers.items() ] )
 			# visible players are only players on the same map as I am
+			self.myAgent.getMyLocation()
 			visible_players = dict( [ ( i[ 0 ], i[ 1 ] ) for i in self.myAgent.players_cache.items() if i[ 1 ][ 0 ] == self.myAgent.location[ 0 ]] )
 			return visible_players
-		except:
+		except Exception as e:
+			print 'ERROR', e
 			return {}
 
 	def getNewNPCMessages( self ):
@@ -511,6 +521,12 @@ class Reason( spade.Behaviour.Behaviour ):
 			return 9997
 		elif quest == 'ferry_schedule_8':
 			return 9996
+		elif quest == 'leader': # Party related are triggered only after maggots' quest
+			return 9997
+		elif quest == 'opportunist':
+			return 9997
+		elif quest == 'extremist_follower':
+			return 9997
 		else:
 			# (yet) unknown quest
 			return 0
@@ -720,7 +736,7 @@ class Reason( spade.Behaviour.Behaviour ):
 				print 'ERROR', e
 
 
-			'''self.myAgent.say( 'Updating my party membership ...' )
+			self.myAgent.say( 'Updating my party membership ...' )
 			party = self.getPartyMembership()
 			if party == -1:
 				self.myAgent.say( 'I am no party member ...' )
@@ -731,7 +747,7 @@ class Reason( spade.Behaviour.Behaviour ):
 				update_predicate = "assert( party( '%s', '%s' ) )" % ( self.myAgent.avatar_name, party )
 				self.myAgent.say( 'Updating knowledge base with: ' + update_predicate )
 				self.myAgent.kb.ask( delete_predicate )
-				self.myAgent.kb.ask( update_predicate )'''
+				self.myAgent.kb.ask( update_predicate )
 
 			self.myAgent.say( 'Updating my social network ...' )
 			soc_net = self.getSocialNetwork()
@@ -885,6 +901,13 @@ class Reason( spade.Behaviour.Behaviour ):
 			b = killMob( mobname )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
+		elif action[ 0 ] == 'createParty':
+			b = createParty( self.myAgent.avatar_name + "'s party" )
+			self.myAgent.addBehaviout( b )
+			time.sleep( 1 )
+			''' joinPartyIfNotInParty, joinPartyIfBetter, evaluateStats, 
+			    getStats, 		   askForStats,       waitForInvitation, 
+			    invitePlayerToParty,   createParty '''
 		
 
 
@@ -1022,7 +1045,8 @@ class Reason( spade.Behaviour.Behaviour ):
 			self.updateKB()
 			# wait until the action is run successfully
 			# ( usually a result is obtainable )
-			while not success or retries == 0:
+			while not success and retries > 0:
+				self.myAgent.say( "Waiting for action result to come in (%d retries left) ..." % retries )
 				time.sleep( 1 )
 				self.myAgent.say( "Updating my knowledge base ..." )
 				self.updateKB()

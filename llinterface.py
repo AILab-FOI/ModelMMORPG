@@ -1412,7 +1412,7 @@ class Connection:
 		listCommand = listCommand.decode("hex")
 		packetLength = len(listCommand) + 4
 		self.srv.sendall( "\x8c\0%s%s" %(struct.pack("<H", packetLength),listCommand))
-		#debug("\n-- list all players command sent-- ")
+		debug("\n-- list all players command sent-- ")
 		
 	def whereAnyone (self, hunter, victim): # Works for Jozek -> igor
 		self.srv.sendall( "\x8c\x00\x18\x00%s : @where %s\x00" %(hunter, victim))
@@ -1437,14 +1437,14 @@ class Connection:
 		dIID = Packet.droppedItemID[0]
 		x_coord = Packet.droppedItem_x[0]
 		y_coord = Packet.droppedItem_y[0]
-		c.setDestination (x_coord -1, y_coord, 2)
+		self.setDestination (x_coord -1, y_coord, 2)
 		time.sleep( 2 )
-		c.itemPickUp (dIOID)
+		self.itemPickUp (dIOID)
 		
 	def followPlayer(self):
 		goTo_x = int(Packet.chatCoordinates_x)-1
 		goTo_y = int(Packet.chatCoordinates_y)
-		c.setDestination (goTo_x, goTo_y, 2)
+		self.setDestination (goTo_x, goTo_y, 2)
 		
 	def takeAllDroppedItems(self):
 		
@@ -1459,9 +1459,9 @@ class Connection:
 			y = value[2]
 			debug( "y coord: %d" % y )
 			
-			c.setDestination(x-1, y, 2)
+			self.setDestination(x-1, y, 2)
 			time.sleep(2)
-			c.itemPickUp(itemID)
+			self.itemPickUp(itemID)
 			time.sleep(0.5)
 		
 	def talkToNPC (self, npcID): # works, BUT need to know NPC ID, and stand closer to it. NPC IDs become available by clicking "n" in game
@@ -1496,7 +1496,7 @@ class Connection:
 			# --- Version 3: press ANY KEY to stop following: ---
 			
 			while True:	
-				c.setDestination (Packet.playerMovesTo_x, Packet.playerMovesTo_y, 2)
+				self.setDestination (Packet.playerMovesTo_x, Packet.playerMovesTo_y, 2)
 				if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
 					line = raw_input()
 					break
@@ -1512,7 +1512,7 @@ class Connection:
 			
 			while True:	
 				
-				c.setDestination (Packet.critterMovesTo_x -1, Packet.critterMovesTo_y, 2)
+				self.setDestination (Packet.critterMovesTo_x -1, Packet.critterMovesTo_y, 2)
 				
 				if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
 					line = raw_input()

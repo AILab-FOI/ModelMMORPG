@@ -91,6 +91,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		except:
 			return ()
 
+	def sendMessage( self, receiver, message, performative='inform' ):
+		msg = spade.ACLMessage.ACLMessage()
+		msg.setPerformative( performative )
+		rec = spade.AID.aid( "%s@127.0.0.1" % receiver, [ "xmpp://%s@127.0.0.1" % receiver ] )
+		msg.addReceiver( rec )
+		msg.setContent( message )
+		self.send( msg )
+
 	def say( self, msg ):
 		''' Say something (e.g. print to console for debug purposes) '''
 		print '%s | %s: %s' % ( time.strftime( '%H:%M:%S' ), self.name.split( '@' )[ 0 ], str( msg ) )
@@ -137,6 +145,14 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 			self.say( 'NPC knowledge base loaded!' )
 		except:
 			self.say( 'Error while loading NPC knowledge base, aborting!' )
+			import sys
+			sys.exit()
+
+		try:
+			self.kb.ask( "['userids.pl']" )
+			self.say( 'User IDs knowledge base loaded!' )
+		except:
+			self.say( 'Error while loading user IDs knowledge base, aborting!' )
 			import sys
 			sys.exit()
 

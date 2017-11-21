@@ -73,7 +73,15 @@ do_action( equipItem( ItemName ), equipItem, [ ItemSlot ] ) :-
 
 do_action( killMob( MobName ), killMob, [ MobName ] ).
 
-/* Random walk on a given map (avoiding blocked places) */
+/* Actions without parameters */
+do_action( Action, Action, [] ) :-
+	NonParamActions = [ joinPartyIfNotInParty, joinPartyIfBetter, evaluateStats, 
+			    getStats, 		   askForStats,       waitForInvitation, 
+			    invitePlayerToParty,   createParty ],
+	member( Action, NonParamActions ).
+
+/* Random walk on a given map (avoiding blocked places) 
+TODO: Implement walking from map to map */
 max_dist( 6 ).
 
 randomWalk( Agent, Map, X, Y ) :-
@@ -215,14 +223,44 @@ recurring_quest( 'stop_talking' ).
 plan_quest( 'random_walk', Plan ) :-
 	waiting_quest( NPC, _, random_walk ),
 	A01 = goToRandomLocationOnMap,
-	Plan = ( a( 1, A01 ) ).
+	Plan = [ a( 1, A01 ) ].
 
 plan_quest( 'random_walk', Plan ) :-
 	waiting_quest( NPC, _, random_walk ),
 	A01 = goToNearByNPC,
-	Plan = ( a( 1, A01 ) ).
+	Plan = [ a( 1, A01 ) ].
+
+/* Party related quests */
 
 
+/* Leader - creates a party and invites people */
+plan_quest( 'leader', Plan ) :-
+	A01 = createParty,
+	A02 = invitePlayerToParty, % If she/he is nearby and not in my party already
+	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].
+
+/* Leader - already created a party, only invited new people */
+plan_quest( 'invite_player', Plan ) :-
+	A01 = invitePlayerToParty, % same as above
+	Plan = [ a( 1, A01 ) ].
+
+/* Opportunist */
+plan_quest( 'opportunist', Plan ) :-
+	A01 = waitForInvitation,
+	A02 = askForStats,
+	A03 = getStats,
+	A04 = evaluateStats,
+	A05 = joinPartyIfBetter,
+	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
+		 a( 5, A05 ) ].
+
+/* Extremist follower */
+plan_quest( 'extremist_follower', Plan ) :-
+	A01 = waitForInvitation,
+	A02 = joinPartyIfNotInParty,
+	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].
+
+recurring_quest( 'leader' ).
 
 /* Auxiliary predicates */
 
