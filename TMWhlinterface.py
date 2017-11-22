@@ -16,13 +16,29 @@ class Role:
 	def __init__( self, behaviours=[] ):
 		self.behaviours = behaviours
 
-class ChangeRole( spade.Behaviour.OneShotBehaviour ):
-	"""Behaviour to change the Role of the Agent. The Agent will acquire behaviours of the needed Role."""
+
+class DeleteRole( spade.Behaviour.OneShotBehaviour ):
+	"""Delete a role of the Agent. The Agent will lose all behaviours of the given Role."""
 	def __init__( self, role, *args, **kwargs ):
 		spade.Behaviour.OneShotBehaviour.__init__( self, *args, **kwargs )
 		self.role = role
 
 	def _process( self ):
+		if not self.role in self.myAgent.roles:
+			raise ValueError, "The agent isn't playing the role to be deleted!"
+		for behaviour, _t in self.role.behaviours:
+			self.myAgent.removeBehaviour( behaviour )
+
+class AddRole( spade.Behaviour.OneShotBehaviour ):
+	"""Behaviour to add a Role to the Agent. The Agent will acquire behaviours of the given Role."""
+	def __init__( self, role, *args, **kwargs ):
+		spade.Behaviour.OneShotBehaviour.__init__( self, *args, **kwargs )
+		self.role = role
+
+	def _process( self ):
+		if not hasattr( self.myAgent, "roles" ):
+			self.myAgent.roles = []
+		self.myAgent.roles.append( self.role )
 		for behaviour, template in self.role.behaviours:
 			self.myAgent.addBehaviour( behaviour, template )
 
@@ -209,14 +225,14 @@ if __name__ == '__main__':
 		for i in range( args.name, args.name + args.num ):
 			a = ManaWorldPlayer( SERVER, PORT, 'mali_agent%d' % i, PASSWORD, CHARACTER, 'agent_%d@127.0.0.1' % i, 'tajna' )
 			if role:
-				a.addBehaviour( ChangeRole( role ) )
+				a.addBehaviour( AddRole( role ) )
 			a.start()
 			time.sleep( args.interval )
 			agent_list.append( a )
 	elif args.name:
 		a = ManaWorldPlayer( SERVER, PORT, 'mali_agent%d' % args.name, PASSWORD, CHARACTER, 'mali_agent%d@127.0.0.1' % args.name, 'tajna' )
 		if role:
-			a.addBehaviour( ChangeRole( role ) )
+			a.addBehaviour( AddRole( role ) )
 		a.start()
 
 	else:

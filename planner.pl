@@ -325,5 +325,15 @@ visited_npc( NPC ) :-
 	quest_no( NPC, _, Quest, _ ),
 	solved_quest( Quest ),
 	\+ recurring_quest( Quest ).
+
+nearby_player( Agent, Name, ID ) :-
+	agent_location( Agent, Map, X1, Y1 ),
+	player_location( Name, Map, X2, Y2 ),
+	max_dist( D ),
+	X is abs( X1 - X2 ),
+	Y is abs( Y1 - Y2 ),
+	D >= X,
+	D >= Y,
+	userid( Name, ID ).
 	
 
