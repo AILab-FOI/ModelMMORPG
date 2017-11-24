@@ -260,78 +260,71 @@ class randomWalk( ExclusiveBehaviour ):
 			self.myAgent.result = False
 		self.release()
 
-
-class FindPlayer( ExclusiveBehaviour ):
-	''' Find a nearby player '''
-	pass
-
-class inviteToParty( ExclusiveBehaviour ):
+class invitePlayersToParty( ExclusiveBehaviour ):
 	''' Invite a given player to a party '''
-	def __init__( self, player, party_name, *args, **kwargs ):
-		ExclusiveBehaviour.__init__( self, *args, **kwargs )
-		self.player = player
-		self.party_name = party_name
-
-	def _process( self ):
-		self.wait()
-		self.myAgent.inviteToParty( self.player )
-		self.myAgent.whisper( self.player, 'Oh, you are so cool, please join my party!' )
-		query = "assert( invitation( '%s', '%s', '%s', sent ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
-		self.myAgent.kb.ask( query )
-		self.myAgent.say( 'I have just invited %s to my party called %s.' % ( self.player, self.party_name ) )
-		self.release()
-		
-
-class joinParty( ExclusiveBehaviour ):
-	''' Join a given party per invitation ''' # responseToPartyInvite 1 accept 0 refuse whisper
-	def __init__( self, player, party_name, *args, **kwargs ):
-		ExclusiveBehaviour.__init__( self, *args, **kwargs )
-		self.player = player
-		self.party_name = party_name
-
-	def _process( self ):
-		self.wait()
-		self.myAgent.responseToPartyInvite( 1 )
-		self.myAgent.whisper( self.player, 'Party time!!!' )
-		query = "retract( invitation( '%s', '%s', '%s', _ ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
-		self.myAgent.kb.ask( query )
-		time.sleep( 0.5 )
-		query = "assert( invitation( '%s', '%s', '%s', accepted ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
-		self.myAgent.kb.ask( query )
-		self.myAgent.say( "I have just joined %s's party called %s." % ( self.player, self.party_name ) )
-		self.release()
-
-class declinePartyInvitation( ExclusiveBehaviour ):
-	''' Decline a party invitation '''
-	def __init__( self, player, party_name, *args, **kwargs ):
-		ExclusiveBehaviour.__init__( self, *args, **kwargs )
-		self.player = player
-		self.party_name = party_name
-
-	def _process( self ):
-		self.wait()
-		self.myAgent.responseToPartyInvite( 0 )
-		self.myAgent.whisper( self.player, 'Meh...' )
-		query = "retract( invitation( '%s', '%s', '%s', _ ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
-		self.myAgent.kb.ask( query )
-		time.sleep( 0.5 )
-		query = "assert( invitation( '%s', '%s', '%s', declined ) )" % ( self.party_name, self.myAgent.avatar_name, self.player )
-		self.myAgent.kb.ask( query )
-		self.myAgent.say( "I have just refused to join %s's party called %s." % ( self.player, self.party_name ) )
-		self.release()
-
-class createParty( ExclusiveBehaviour ):
-	''' Create a party '''
 	def __init__( self, party_name, *args, **kwargs ):
 		ExclusiveBehaviour.__init__( self, *args, **kwargs )
 		self.party_name = party_name
 
 	def _process( self ):
+		self.wait()		
+		query = "nearby_player( '%s', Name, ID )" % self.myAgent.avatar_name
+		result = self.kb.ask( query )
+		for r in result:
+			self.myAgent.sendMessage( self, r[ "Name" ], self.party_name, performative='propose' )
+			self.myAgent.inviteToParty( r[ "ID" ] )
+			self.myAgent.whisper( r[ "Name" ], 'Oh, you are so cool, please join my party!' )
+			query = "assert( invitation( '%s', '%s', '%s', sent ) )" % ( self.party_name, self.myAgent.avatar_name, r[ "Name" ] )
+			self.myAgent.kb.ask( query )
+			self.myAgent.say( 'I have just invited %s to my party called %s.' % ( r[ "Name" ], self.party_name ) )
+		self.release()
+		
+
+class joinPartyIfNotInParty( ExclusiveBehaviour, spade.Behaviour.EventBehaviour ):
+	''' Join a given party per invitation ''' # responseToPartyInvite 1 accept 0 refuse whisper
+	def __init__( self, *args, **kwargs ):
+		spade.Behaviour.EventBehaviour.__init__( self, *args, **kwargs ) # intentionally do not initialize ExclusiveBehaviour
+
+	def _process( self ):
+		self.msg = None
+		self.msg = self._receive( True )
+		if self.msg:
+			sender = self.msg.sender.getName().split( '@' )[ 0 ]
+			party_name = self.msg.content
+			if not hasattr( self.myAgent, 'party' ):
+				self.myAgent.party = party_name
+				self.myAgent.responseToPartyInvite( 1 )
+				self.myAgent.whisper( self.player, 'Party time!!!' )
+				self.myAgent.sendMessage( self, sender, "Party time!!!", performative='accept-proposal' )
+
+				self.wait()
+				query = "assert( invitation( '%s', '%s', '%s', accepted ) )" % ( party_name, self.myAgent.avatar_name, sender )
+				self.myAgent.kb.ask( query )
+				self.release()
+
+				self.myAgent.say( "I have just joined %s's party called %s." % ( sender, party_name ) )
+			else:
+				sender = self.msg.sender.getName().split( '@' )[ 0 ]
+				self.myAgent.responseToPartyInvite( 0 )
+				self.myAgent.sendMessage( self, r[ "Name" ], "No Way!", performative='reject-proposal' )
+
+				self.wait()
+				query = "assert( invitation( '%s', '%s', '%s', rejected ) )" % ( party_name, self.myAgent.avatar_name, sender )
+				self.myAgent.kb.ask( query )
+				self.release()
+
+				self.myAgent.say( "I have just rejected to join %s's party called %s." % ( sender, party_name ) )
+
+
+class createParty( ExclusiveBehaviour ):
+	def _process( self ):
 		self.wait()
-		self.myAgent.createParty( self.party_name )
-		query = "assert( party( '%s', '%s', founder ) )" % ( self.party_name, self.myAgent.avatar_name )
+		self.myAgent.party = 'ThePartyOf' + self.myAgent.avatar_name
+		self.myAgent.createParty( self.myAgent.party )
+		query = "assert( party( '%s', '%s', founder ) )" % ( self.myAgent.party, self.myAgent.avatar_name )
 		self.myAgent.kb.ask( query )
-		self.myAgent.say( "I have just created my party called %s." % self.party_name )
+		self.myAgent.say( "I have just created my party called '%s'." % self.myAgent.party )
+		self.myAgent.result = True
 		self.release()
 
 class leaveParty( ExclusiveBehaviour ):
@@ -521,12 +514,14 @@ class Reason( spade.Behaviour.Behaviour ):
 			return 9997
 		elif quest == 'ferry_schedule_8':
 			return 9996
-		elif quest == 'leader': # Party related are triggered only after maggots' quest
-			return 9997
-		elif quest == 'opportunist':
-			return 9997
+		elif quest == 'leader': 
+			return 10001
+		elif quest == 'invite_player':
+			return 10001
+		elif quest == 'opportunist': 
+			return 10001
 		elif quest == 'extremist_follower':
-			return 9997
+			return 10001
 		else:
 			# (yet) unknown quest
 			return 0
@@ -803,6 +798,7 @@ class Reason( spade.Behaviour.Behaviour ):
 		quests = self.myAgent.askBelieve( query )
 		if quests:
 			next = sorted( quests, key=lambda x: x[ 'No' ] )[ 0 ][ 'Name' ]
+			self.myAgent.say( 'My quests are: ' + str( next ) )
 			self.myAgent.say( 'My next objective is quest: ' + next )
 			self.addDestinationNPC( next )
 			return next
@@ -902,12 +898,15 @@ class Reason( spade.Behaviour.Behaviour ):
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
 		elif action[ 0 ] == 'createParty':
-			b = createParty( self.myAgent.avatar_name + "'s party" )
-			self.myAgent.addBehaviout( b )
+			b = createParty()
+			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			''' joinPartyIfNotInParty, joinPartyIfBetter, evaluateStats, 
-			    getStats, 		   askForStats,       waitForInvitation, 
-			    invitePlayerToParty,   createParty '''
+		elif action[ 0 ] == 'invitePlayersToParty':
+			b = invitePlayersToParty()
+			self.myAgent.addBehaviour( b )
+			time.sleep( 1 )
+			''' joinPartyIfNotInParty, joinPartyIfBetter,  askForStats
+			    invitePlayersToParty,   createParty '''
 		
 
 
@@ -936,9 +935,18 @@ class Reason( spade.Behaviour.Behaviour ):
 			self.myAgent.say( 'My location ' + str( self.myAgent.location ) )
 			self.myAgent.say( 'My destination ' + str( tuple( action[ 1 ][ 1: ] ) ) )
 			return self.myAgent.location == tuple( action[ 1 ][ 1: ] ) # returns True if the agent has arrived
-		if action[ 0 ] == 'killMob':
+		elif action[ 0 ] == 'killMob':
 			time.sleep( 5 ) # TODO: Proove this
 			return True
+		elif action[ 0 ] == 'createParty':
+			time.sleep( 1 )
+			print 1
+			if hasattr( self.myAgent, 'party' ):
+				print 2
+				return True
+			else:
+				print 3
+				return False
 		return False # Unknown action
 
 	def actionFailed( self ):

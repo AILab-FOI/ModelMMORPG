@@ -74,10 +74,9 @@ do_action( equipItem( ItemName ), equipItem, [ ItemSlot ] ) :-
 do_action( killMob( MobName ), killMob, [ MobName ] ).
 
 /* Actions without parameters */
-do_action( Action, Action, [] ) :-
-	NonParamActions = [ joinPartyIfNotInParty, joinPartyIfBetter, evaluateStats, 
-			    getStats, 		   askForStats,       waitForInvitation, 
-			    invitePlayerToParty,   createParty ],
+do_action( Action, Action, [ dummy ] ) :-
+	NonParamActions = [ joinPartyIfNotInParty, joinPartyIfBetter, askForStats,       
+			    invitePlayersToParty,  createParty ],
 	member( Action, NonParamActions ).
 
 /* Random walk on a given map (avoiding blocked places) 
@@ -230,35 +229,29 @@ plan_quest( 'random_walk', Plan ) :-
 	A01 = goToNearByNPC,
 	Plan = [ a( 1, A01 ) ].
 
-/* Party related quests */
+/*** Party related quests ***/
 
-
-/* Leader - creates a party and invites people */
+/* Leader - proactive plan (creates a party and invites people) */
 plan_quest( 'leader', Plan ) :-
 	A01 = createParty,
-	A02 = invitePlayerToParty, % If she/he is nearby and not in my party already
+	A02 = invitePlayersToParty, % If she/he is nearby and not in my party already
 	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].
 
-/* Leader - already created a party, only invited new people */
+/* Leader - periodic plan (already created a party, only invite new people) */
 plan_quest( 'invite_player', Plan ) :-
-	A01 = invitePlayerToParty, % same as above
+	A01 = invitePlayersToParty, % same as above
 	Plan = [ a( 1, A01 ) ].
 
-/* Opportunist */
-plan_quest( 'opportunist', Plan ) :-
-	A01 = waitForInvitation,
-	A02 = askForStats,
-	A03 = getStats,
-	A04 = evaluateStats,
-	A05 = joinPartyIfBetter,
-	Plan = [ a( 1, A01 ),   a( 2, A02 ),  a( 3, A03 ),  a( 4, A04 ), 
-		 a( 5, A05 ) ].
-
-/* Extremist follower */
-plan_quest( 'extremist_follower', Plan ) :-
-	A01 = waitForInvitation,
-	A02 = joinPartyIfNotInParty,
+/* Opportunist - reactive plan (if someone invites me, I evaluate and eventually join) */
+plan_quest( 'opportunist', Plan ) :- 
+	A01 = askForStats,
+	A02 = joinPartyIfBetter,
 	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].
+
+/* Extremist follower - reactive plan (if someone invites me, I join if I am not in another party) */
+plan_quest( 'extremist_follower', Plan ) :-
+	A01 = joinPartyIfNotInParty,
+	Plan = [ a( 1, A01 ) ].
 
 recurring_quest( 'leader' ).
 
@@ -336,4 +329,3 @@ nearby_player( Agent, Name, ID ) :-
 	D >= Y,
 	userid( Name, ID ).
 	
-

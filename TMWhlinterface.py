@@ -46,8 +46,15 @@ class Leader( Role ):
 	class LeaderBehaviour( spade.Behaviour.OneShotBehaviour ):
 		def _process( self ):
 			self.myAgent.say( 'I am a leader!' )
-			query = "assert( waiting_quest( 'party_time', '%s', leadership ) )" % self.myAgent.avatar_name
+			query = "assert( waiting_quest( 'party_time', '%s', leader ) )" % self.myAgent.avatar_name
 			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			query = "assert( quest_no( 'party_time', '%s', leader, 0 ) )" % self.myAgent.avatar_name
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			query = "assert( quest_sign( '%s', leader, 10001 ) )" % self.myAgent.avatar_name 
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
 
 	class InvitePlayers( spade.Behaviour.PeriodicBehaviour ):
 		def _onTick( self ):
