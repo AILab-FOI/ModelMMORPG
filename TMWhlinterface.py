@@ -56,6 +56,19 @@ class Leader( Role ):
 			self.myAgent.kb.ask( query )
 			time.sleep( 0.5 )
 
+	class PartyStats( spade.Behaviour.OneShotBehaviour ):
+		def _process( self ):
+			self.myAgent.say( 'I need to manage my party ...' )
+			query = "assert( waiting_quest( 'party_time', '%s', store_party_stats ) )" % self.myAgent.avatar_name
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			query = "assert( quest_no( 'party_time', '%s', store_party_stats, 0 ) )" % self.myAgent.avatar_name
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			query = "assert( quest_sign( '%s', store_party_stats, 10002 ) )" % self.myAgent.avatar_name 
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+
 	class InvitePlayers( spade.Behaviour.PeriodicBehaviour ):
 		def _onTick( self ):
 			''' if the quest of inviting people isn't waiting, put it into waiting again '''
@@ -85,7 +98,8 @@ class Leader( Role ):
 	def __init__( self ):
 		lb = self.LeaderBehaviour()
 		ipb = self.InvitePlayers( 30 ) # check every 30 seconds
-		self.behaviours = [ ( lb, None ), ( ipb, None ) ]
+		psb = self.PartyStats()
+		self.behaviours = [ ( lb, None ), ( ipb, None ), ( psb, None ) ]
 
 class ExtremistFollower( Role ):
 	class ExtremistFollowerBehaviour( spade.Behaviour.OneShotBehaviour ):

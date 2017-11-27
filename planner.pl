@@ -11,6 +11,8 @@
 :- dynamic solved_quest/1.
 :- dynamic npc_message/3.
 :- dynamic party/3. % party_name, player_name, status (founder/member)
+:- dynamic party_member/1. % player_name
+:- dynamic party_count/1. 
 :- dynamic invitation/4. % party, from player name, to player name, status (sent/accepted/declined)
 :- dynamic social_network/3.
 :- dynamic slot/4.
@@ -76,7 +78,8 @@ do_action( killMob( MobName ), killMob, [ MobName ] ).
 /* Actions without parameters */
 do_action( Action, Action, [ dummy ] ) :-
 	NonParamActions = [ joinPartyIfNotInParty, joinPartyIfBetter, askForStats,       
-			    invitePlayersToParty,  createParty ],
+			    invitePlayersToParty,  createParty,       giveStats,
+                            addNewMember,          removeMember ],
 	member( Action, NonParamActions ).
 
 /* Random walk on a given map (avoiding blocked places) 
@@ -242,6 +245,13 @@ plan_quest( 'invite_player', Plan ) :-
 	A01 = invitePlayersToParty, % same as above
 	Plan = [ a( 1, A01 ) ].
 
+/* Leader - reactive plan (do stuff when asked to) */
+plan_quest( 'store_party_stats', Plan ) :-
+	A01 = giveStats,
+	A02 = addNewMember,
+	A03 = removeMember,
+	Plan = [ a( 1, A01 ),   a( 2, A02 ),   a( 3, A03 ) ].
+
 /* Opportunist - reactive plan (if someone invites me, I evaluate and eventually join) */
 plan_quest( 'opportunist', Plan ) :- 
 	A01 = askForStats,
@@ -328,4 +338,18 @@ nearby_player( Agent, Name, ID ) :-
 	D >= X,
 	D >= Y,
 	userid( Name, ID ).
-	
+
+add_party_member( Member ) :-
+	assert( party_member( Member ) ),
+	retract( party_count( C ) ),
+	C1 is C + 1,
+	assert( party_count( C1 ) ).
+
+remove_party_member( Member ) :-
+	retract( party_member( Member ) ),
+	retract( party_count( C ) ),
+	C1 is C - 1,
+	assert( party_count( C1 ) ).
+
+% Every leader has a party with one member (themselves)
+party_count( 1 ).
