@@ -1544,8 +1544,11 @@ class Connection:
 	def leaveParty(self):
 		self.srv.sendall( "\x00\x01" )	
 		
-	def responseToPartyInvite(self, responseToInvite):
+	def responseToPartyInviteOld(self, responseToInvite):
 		self.srv.sendall("\xff\x00%s\x00\x00\x00" % (struct.pack("<LB", Packet.whoInvites, responseToInvite)))
+		
+	def responseToPartyInvite(self, pid, responseToInvite):
+		self.srv.sendall("\xff\x00%s\x00\x00\x00" % (struct.pack("<LB", pid, responseToInvite)))
 		
 	def sendPartyMessage(self, message):
 		messageLength = len(message)+4
@@ -1763,7 +1766,7 @@ if __name__ == '__main__':
 			
 		elif command == "31":
 			responseToInvite = int(raw_input("Type 1 for accept, 0 for refuse: "))
-			c.responseToPartyInvite(responseToInvite)
+			c.responseToPartyInviteOld(responseToInvite)
 	
 		elif command == "32":
 			partyMessage = raw_input("Type your message: ")

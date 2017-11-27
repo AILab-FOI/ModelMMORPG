@@ -267,59 +267,82 @@ class invitePlayersToParty( ExclusiveBehaviour ):
 		self.party_name = party_name
 
 	def _process( self ):
-		self.wait()		
-		query = "nearby_player( '%s', Name, ID )" % self.myAgent.avatar_name
-		result = self.kb.ask( query )
-		for r in result:
-			self.myAgent.sendMessage( self, r[ "Name" ], self.party_name, performative='propose' )
-			self.myAgent.inviteToParty( r[ "ID" ] )
-			self.myAgent.whisper( r[ "Name" ], 'Oh, you are so cool, please join my party!' )
-			query = "assert( invitation( '%s', '%s', '%s', sent ) )" % ( self.party_name, self.myAgent.avatar_name, r[ "Name" ] )
-			self.myAgent.kb.ask( query )
-			self.myAgent.say( 'I have just invited %s to my party called %s.' % ( r[ "Name" ], self.party_name ) )
+		self.wait()
+		try:		
+			query = "nearby_player( '%s', Name, ID )" % self.myAgent.avatar_name
+			result = self.myAgent.kb.ask( query )
+			for r in result:
+				self.myAgent.sendMessage( r[ "Name" ], self.party_name, performative='propose' )
+				self.myAgent.inviteToParty( int( r[ "ID" ] ) )
+				self.myAgent.whisper( r[ "Name" ], 'Oh, you are so cool, please join my party!' )
+				query = "assert( invitation( '%s', '%s', '%s', sent ) )" % ( self.party_name, self.myAgent.avatar_name, r[ "Name" ] )
+				self.myAgent.kb.ask( query )
+				self.myAgent.say( 'I have just invited %s to my party called %s.' % ( r[ "Name" ], self.party_name ) )
+			self.myAgent.result = True
+		except Exception as e:
+			print 'ERROR', e
+			self.myAgent.result = False
 		self.release()
 		
 
 class joinPartyIfNotInParty( ExclusiveBehaviour, spade.Behaviour.EventBehaviour ):
-	''' Join a given party per invitation ''' # responseToPartyInvite 1 accept 0 refuse whisper
+	''' Join a given party per invitation ''' 
 	def __init__( self, *args, **kwargs ):
+		t = spade.Behaviour.ACLTemplate()
+		t.setPerformative( 'propose' )
+		self.template = spade.Behaviour.MessageTemplate( t )
 		spade.Behaviour.EventBehaviour.__init__( self, *args, **kwargs ) # intentionally do not initialize ExclusiveBehaviour
+		
 
 	def _process( self ):
 		self.msg = None
 		self.msg = self._receive( True )
 		if self.msg:
 			sender = self.msg.sender.getName().split( '@' )[ 0 ]
-			party_name = self.msg.content
-			if not hasattr( self.myAgent, 'party' ):
-				self.myAgent.party = party_name
-				self.myAgent.responseToPartyInvite( 1 )
-				self.myAgent.whisper( self.player, 'Party time!!!' )
-				self.myAgent.sendMessage( self, sender, "Party time!!!", performative='accept-proposal' )
-
-				self.wait()
-				query = "assert( invitation( '%s', '%s', '%s', accepted ) )" % ( party_name, self.myAgent.avatar_name, sender )
-				self.myAgent.kb.ask( query )
-				self.release()
-
-				self.myAgent.say( "I have just joined %s's party called %s." % ( sender, party_name ) )
+			query = "userid( '%s', ID )" % sender
+			res = self.myAgent.kb.ask( query )
+			if res:
+				pid = int( res[ 0 ][ 'ID' ] )
 			else:
-				sender = self.msg.sender.getName().split( '@' )[ 0 ]
-				self.myAgent.responseToPartyInvite( 0 )
-				self.myAgent.sendMessage( self, r[ "Name" ], "No Way!", performative='reject-proposal' )
+				raise ValueError, 'Invitation from unknown player!'
+			party_name = self.msg.content
+			try:
+				if not hasattr( self.myAgent, 'party' ):
+					self.myAgent.leaveParty()
+					time.sleep( 0.2 )
+					self.myAgent.party = party_name
+					self.myAgent.responseToPartyInvite( pid, 1 )
+					time.sleep( 0.2 )
+					self.myAgent.whisper( sender, 'Party time!!!' )
+					self.myAgent.sendMessage( sender, "Party time!!!", performative='accept-proposal' )
 
-				self.wait()
-				query = "assert( invitation( '%s', '%s', '%s', rejected ) )" % ( party_name, self.myAgent.avatar_name, sender )
-				self.myAgent.kb.ask( query )
-				self.release()
+					self.wait()
+					query = "assert( invitation( '%s', '%s', '%s', accepted ) )" % ( party_name, self.myAgent.avatar_name, sender )
+					self.myAgent.kb.ask( query )
+					self.release()
 
-				self.myAgent.say( "I have just rejected to join %s's party called %s." % ( sender, party_name ) )
+					self.myAgent.say( "I have just joined %s's party called %s." % ( sender, party_name ) )
+				else:
+					sender = self.msg.sender.getName().split( '@' )[ 0 ]
+					self.myAgent.responseToPartyInvite( pid, 0 )
+					self.myAgent.sendMessage( sender, "No Way!", performative='reject-proposal' )
+
+					self.wait()
+					query = "assert( invitation( '%s', '%s', '%s', rejected ) )" % ( party_name, self.myAgent.avatar_name, sender )
+					self.myAgent.kb.ask( query )
+					self.release()
+
+					self.myAgent.say( "I have just rejected to join %s's party called %s." % ( sender, party_name ) )
+			except Exception as e:
+				print 'ERROR', e
 
 
 class createParty( ExclusiveBehaviour ):
 	def _process( self ):
 		self.wait()
 		self.myAgent.party = 'ThePartyOf' + self.myAgent.avatar_name
+		self.myAgent.leaveParty()
+		time.sleep( 0.2 )
 		self.myAgent.createParty( self.myAgent.party )
 		query = "assert( party( '%s', '%s', founder ) )" % ( self.myAgent.party, self.myAgent.avatar_name )
 		self.myAgent.kb.ask( query )
@@ -331,7 +354,7 @@ class leaveParty( ExclusiveBehaviour ):
 	''' Leave current party '''
 	def _process( self ):
 		self.wait()
-		self.myAgent.leaveParty( self.party_name )
+		self.myAgent.leaveParty()
 		query = "retract( party( _, '%s', _ ) )" % self.myAgent.avatar_name
 		self.myAgent.kb.ask( query )
 		self.myAgent.say( "I have just left my party." )
@@ -902,10 +925,15 @@ class Reason( spade.Behaviour.Behaviour ):
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
 		elif action[ 0 ] == 'invitePlayersToParty':
-			b = invitePlayersToParty()
+			b = invitePlayersToParty( self.myAgent.party )
 			self.myAgent.addBehaviour( b )
 			time.sleep( 1 )
-			''' joinPartyIfNotInParty, joinPartyIfBetter,  askForStats
+		elif action[ 0 ] == 'joinPartyIfNotInParty':
+			b = joinPartyIfNotInParty()
+			self.myAgent.addBehaviour( b, b.template )
+			self.myAgent.result = True
+			time.sleep( 1 )
+			''' , joinPartyIfBetter,  askForStats
 			    invitePlayersToParty,   createParty '''
 		
 
@@ -940,13 +968,16 @@ class Reason( spade.Behaviour.Behaviour ):
 			return True
 		elif action[ 0 ] == 'createParty':
 			time.sleep( 1 )
-			print 1
 			if hasattr( self.myAgent, 'party' ):
-				print 2
 				return True
 			else:
-				print 3
 				return False
+		elif action[ 0 ] == 'invitePlayersToParty':
+			time.sleep( 1 )
+			return True # should be working anytime (!!?)
+		elif action[ 0 ] == 'joinPartyIfNotInParty':
+			time.sleep( 1 )
+			return True	
 		return False # Unknown action
 
 	def actionFailed( self ):
@@ -1030,7 +1061,10 @@ class Reason( spade.Behaviour.Behaviour ):
 			if not nextAction:
 				self.myAgent.say( "My plan didn't work out. I'll try something else." )
 				break
-			self.myAgent.say( 'My next action is "%s( %s )"' % ( nextAction[ 0 ], ','.join( nextAction[ 1 ] ) ) )
+			args = ','.join( nextAction[ 1 ] )
+			if args == 'dummy':
+				args = ''
+			self.myAgent.say( 'My next action is "%s( %s )"' % ( nextAction[ 0 ], args ) )
 			self.act( nextAction )
 			counter = 0
 			self.myAgent.say( 'I made my move, let us see if this worked ...' )

@@ -64,9 +64,23 @@ class Leader( Role ):
 			if not result:
 				query = query = "retractall( waiting_quest( 'party_time', '%s', invite_player ) )" % self.myAgent.avatar_name
 				self.myAgent.kb.ask( query )
+				time.sleep( 0.5 )
+				query = query = "retractall( quest_no( 'party_time', '%s', invite_player, _ ) )" % self.myAgent.avatar_name
+				self.myAgent.kb.ask( query )
+				time.sleep( 0.5 )
+				query = query = "retractall( quest_sign( '%s', invite_player, _ ) )" % self.myAgent.avatar_name
+				self.myAgent.kb.ask( query )
+				time.sleep( 0.5 )
 				self.myAgent.say( 'Need to invite more people!' )
 				query = "assert( waiting_quest( 'party_time', '%s', invite_player ) )" % self.myAgent.avatar_name
 				self.myAgent.kb.ask( query )
+				time.sleep( 0.5 )
+				query = "assert( quest_no( 'party_time', '%s', invite_player, 0 ) )" % self.myAgent.avatar_name
+				self.myAgent.kb.ask( query )
+				time.sleep( 0.5 )
+				query = "assert( quest_sign( '%s', invite_player, 10001 ) )" % self.myAgent.avatar_name 
+				self.myAgent.kb.ask( query )
+				time.sleep( 0.5 )
 
 	def __init__( self ):
 		lb = self.LeaderBehaviour()
@@ -79,6 +93,14 @@ class ExtremistFollower( Role ):
 			self.myAgent.say( 'I am an extremist follower!' )
 			query = "assert( waiting_quest( 'party_time', '%s', extremist_follower ) )" % self.myAgent.avatar_name
 			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			query = "assert( quest_no( 'party_time', '%s', extremist_follower, 0 ) )" % self.myAgent.avatar_name
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			query = "assert( quest_sign( '%s', extremist_follower, 10001 ) )" % self.myAgent.avatar_name 
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+
 
 	def __init__( self ):
 		efb = self.ExtremistFollowerBehaviour()
@@ -90,6 +112,13 @@ class Opportunist( Role ):
 			self.myAgent.say( 'I am an opportunist!' )
 			query = "assert( waiting_quest( 'party_time', '%s', opportunist ) )" % self.myAgent.avatar_name
 			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			query = "assert( quest_no( 'party_time', '%s', opportunist, 0 ) )" % self.myAgent.avatar_name
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			query = "assert( quest_sign( '%s', opportunist, 10001 ) )" % self.myAgent.avatar_name 
+			self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
 
 	def __init__( self ):
 		ob = self.OpportunistBehaviour()
