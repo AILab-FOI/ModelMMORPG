@@ -234,16 +234,17 @@ plan_quest( 'random_walk', Plan ) :-
 
 /*** Party related quests ***/
 
-/* Leader - proactive plan (creates a party and invites people) */
+/* Leader - proactive plan (creates a party) */
 plan_quest( 'leader', Plan ) :-
 	A01 = createParty,
-	A02 = invitePlayersToParty, % If she/he is nearby and not in my party already
-	Plan = [ a( 1, A01 ),   a( 2, A02 ) ].
+	Plan = [ a( 1, A01 ) ].
 
 /* Leader - periodic plan (already created a party, only invite new people) */
 plan_quest( 'invite_player', Plan ) :-
 	A01 = invitePlayersToParty, % same as above
 	Plan = [ a( 1, A01 ) ].
+
+recurring_quest( 'invite_player' ).
 
 /* Leader - reactive plan (do stuff when asked to) */
 plan_quest( 'store_party_stats', Plan ) :-
@@ -337,7 +338,12 @@ nearby_player( Agent, Name, ID ) :-
 	Y is abs( Y1 - Y2 ),
 	D >= X,
 	D >= Y,
-	userid( Name, ID ).
+	userid( Name, ID ),
+	Agent \= Name.
+
+nearby_non_member( Agent, Name, ID ) :-
+	nearby_player( Agent, Name, ID ),
+	\+ party_member( Name ).
 
 add_party_member( Member ) :-
 	assert( party_member( Member ) ),

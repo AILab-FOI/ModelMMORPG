@@ -15,6 +15,8 @@ class ExclusiveBehaviour( spade.Behaviour.OneShotBehaviour ):
 		while self.myAgent.semaphore:
 			time.sleep( 0.1 )
 
+		self.myAgent.semaphore = True
+
 	def release( self ):
 		self.myAgent.semaphore = False
 
@@ -269,8 +271,9 @@ class invitePlayersToParty( ExclusiveBehaviour ):
 	def _process( self ):
 		self.wait()
 		try:		
-			query = "nearby_player( '%s', Name, ID )" % self.myAgent.avatar_name
+			query = "nearby_non_member( '%s', Name, ID )" % self.myAgent.avatar_name
 			result = self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
 			if result:
 				for r in result:
 					self.myAgent.sendMessage( r[ "Name" ], self.party_name, performative='propose' )
@@ -280,6 +283,8 @@ class invitePlayersToParty( ExclusiveBehaviour ):
 					self.myAgent.kb.ask( query )
 					self.myAgent.say( 'I have just invited %s to my party called %s.' % ( r[ "Name" ], self.party_name ) )
 				self.myAgent.result = True
+			else:
+				self.myAgent.say( 'No visible non-members to invite near me :(' )
 		except Exception as e:
 			print 'ERROR', e
 			self.myAgent.result = False
@@ -341,13 +346,14 @@ class joinPartyIfNotInParty( ExclusiveBehaviour, spade.Behaviour.EventBehaviour 
 class createParty( ExclusiveBehaviour ):
 	def _process( self ):
 		self.wait()
-		self.myAgent.party = 'ThePartyOf' + self.myAgent.avatar_name
-		self.myAgent.leaveParty()
-		time.sleep( 0.2 )
-		self.myAgent.createParty( self.myAgent.party )
-		query = "assert( party( '%s', '%s', founder ) )" % ( self.myAgent.party, self.myAgent.avatar_name )
-		self.myAgent.kb.ask( query )
-		self.myAgent.say( "I have just created my party called '%s'." % self.myAgent.party )
+                if not hasattr( self.myAgent, 'party' ):
+		        self.myAgent.party = 'ThePartyOf' + self.myAgent.avatar_name
+		        self.myAgent.leaveParty()
+		        time.sleep( 0.2 )
+		        self.myAgent.createParty( self.myAgent.party )
+		        query = "assert( party( '%s', '%s', founder ) )" % ( self.myAgent.party, self.myAgent.avatar_name )
+		        self.myAgent.kb.ask( query )
+		        self.myAgent.say( "I have just created my party called '%s'." % self.myAgent.party )
 		self.myAgent.result = True
 		self.release()
 
@@ -375,12 +381,15 @@ class giveStats( ExclusiveBehaviour, spade.Behaviour.EventBehaviour ):
 		if self.msg:
 			sender = self.msg.sender.getName().split( '@' )[ 0 ]
 			query = "party_count( Count )"
+			self.wait()
 			res = self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			self.release()
 			if res:
 				count = int( res[ 0 ][ 'Count' ] )
 			else:
 				raise Exception, 'Error while getting party count! Query returned', res
-			self.myAgent.sendMessage( sender, count, performative='inform-ref' )
+			self.myAgent.sendMessage( sender, count, performative='inform-ref', ontology=self.myAgent.party )
 			self.myAgent.say( 'I have just sent my party count to agent %s. The party has %d members!' % ( sender, count ) )
 		
 
@@ -410,13 +419,27 @@ class removeMember( ExclusiveBehaviour, spade.Behaviour.EventBehaviour ):
 		spade.Behaviour.EventBehaviour.__init__( self, *args, **kwargs ) # intentionally do not initialize ExclusiveBehaviour
 		
 	def _process( self ):
+		#print 1
 		self.msg = None
+		#print 2
 		self.msg = self._receive( True )
+		#print 3
 		if self.msg:
+			#print 4
 			sender = self.msg.sender.getName().split( '@' )[ 0 ]
+			#print 5
 			query = "remove_party_member( '%s' )" % sender
+			#print 6
+			self.wait()
+			#print 7
 			self.myAgent.kb.ask( query )
+			#print 8
+			time.sleep( 0.5 )
+			#print 9
+			self.release()
+			#print 10
 			self.myAgent.say( 'I have just removed agent %s from my party!' % sender )
+			#print 11
 
 class askForStats( ExclusiveBehaviour, spade.Behaviour.EventBehaviour ):
 	''' Remove a member from the party '''
@@ -430,9 +453,24 @@ class askForStats( ExclusiveBehaviour, spade.Behaviour.EventBehaviour ):
 		self.msg = None
 		self.msg = self._receive( True )
 		if self.msg:
+			party_name = self.msg.getContent()
 			sender = self.msg.sender.getName().split( '@' )[ 0 ]
-			self.myAgent.sendMessage( sender, 'How big is your party?', performative='request' )
-			self.myAgent.say( 'I have just asked %s how big the party is!' % sender )
+			query = "userid( '%s', ID )" % sender
+			res = self.myAgent.kb.ask( query )
+			if res:
+				pid = int( res[ 0 ][ 'ID' ] )
+			else:
+				raise ValueError, 'Invitation from unknown player!'
+			if not hasattr( self.myAgent, 'party' ):
+				self.myAgent.party = party_name
+				self.myAgent.responseToPartyInvite( pid, 1 )
+				time.sleep( 0.2 )
+				self.myAgent.whisper( sender, 'Party time!!!' )
+				self.myAgent.sendMessage( sender, "Party time!!!", performative='accept-proposal' )
+				self.myAgent.say( "I have just joined %s's party called %s, since I'm in no party yet." % ( sender, party_name ) )
+			else:
+				self.myAgent.sendMessage( sender, 'How big is your party?', performative='request' )
+				self.myAgent.say( 'I have just asked %s how big the party is!' % sender )
 
 class joinPartyIfBetter( ExclusiveBehaviour, spade.Behaviour.EventBehaviour ):
 	''' Remove a member from the party '''
@@ -448,42 +486,52 @@ class joinPartyIfBetter( ExclusiveBehaviour, spade.Behaviour.EventBehaviour ):
 		if self.msg:
 			sender = self.msg.sender.getName().split( '@' )[ 0 ]
 			query = "party_count( Count )"
+			self.wait()
 			res = self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
+			self.release()
 			if res:
 				count = int( res[ 0 ][ 'Count' ] )
 			else:
 				raise Exception, 'Error while getting party count! Query returned', res
 			newCount = int( self.msg.getContent() )
 			if newCount >= count:
-				query = "invitation( _, '%s', OldLeader )" % self.myAgent.avatar_name
+				query = "invitation( _, '%s', OldLeader, _ )" % self.myAgent.avatar_name
+				self.wait()
 				res = self.myAgent.kb.ask( query )
+				self.release()
 				if res:
 					oldLeader = res[ 0 ][ 'OldLeader' ]
 					self.myAgent.sendMessage( oldLeader, "Sorry, it is not you, it's me ...", performative='cancel' )
 					self.myAgent.say( "I just left %s's party ..." % oldLeader )
 				time.sleep( 0.2 )
 				query = "userid( '%s', ID )" % sender
+				self.wait()
 				res = self.myAgent.kb.ask( query )
+				self.release()
 				if res:
 					pid = int( res[ 0 ][ 'ID' ] )
 				else:
 					raise ValueError, 'Invitation from unknown player!'
 				self.myAgent.leaveParty()
 				time.sleep( 0.2 )
+				party_name = self.msg.getOntology() # The name of the party is "hidden" in the ontology of the message
 				self.myAgent.party = party_name
 				self.myAgent.responseToPartyInvite( pid, 1 )
 				time.sleep( 0.2 )
 				self.myAgent.whisper( sender, 'Party time!!!' )
 				self.myAgent.sendMessage( sender, "Party time!!!", performative='accept-proposal' )
 
-				self.wait()
 				query = "assert( invitation( '%s', '%s', '%s', accepted ) )" % ( party_name, self.myAgent.avatar_name, sender )
+				self.wait()
+				self.myAgent.kb.ask( query )
+				self.release()
+				query = "party_count( %d )" % newCount
+				self.wait()
 				self.myAgent.kb.ask( query )
 				self.release()
 
-				self.myAgent.say( "I have just joined %s's party called %s." % ( sender, party_name ) )
-				
-				
+				self.myAgent.say( "I have just joined %s's party called %s since it has better stats (%d - %d)" % ( sender, party_name, newCount, count ) )
 
 class Reason( spade.Behaviour.Behaviour ):
 	def storeKB( self ):
@@ -944,12 +992,18 @@ class Reason( spade.Behaviour.Behaviour ):
 		''' Select most relevant objective ( quest ) to be solved next '''
 		query = "sort_quests( '%s' ), quest_no( NPC, '%s', Name, No ), \+ solved_quest( Name )." % ( self.myAgent.avatar_name, self.myAgent.avatar_name )
 		quests = self.myAgent.askBelieve( query )
+		time.sleep( 0.5 )
 		if quests:
 			next = sorted( quests, key=lambda x: x[ 'No' ] )[ 0 ][ 'Name' ]
 			self.myAgent.say( 'My quests are: ' + str( next ) )
 			self.myAgent.say( 'My next objective is quest: ' + next )
 			self.addDestinationNPC( next )
 			return next
+		else:
+			query = 'waiting_quest( party_time, _, invite_player )'
+			result = self.myAgent.askBelieve( query )
+			if result and random() > 0.5:
+				return 'invite_player' # A little hack to let leaders invite players from time to time whenever they have no quests waiting
 		time.sleep( 1 )
 
 	def getNextAction( self, quest ):
@@ -1161,7 +1215,7 @@ class Reason( spade.Behaviour.Behaviour ):
 
 	def reconsider( self ):
 		''' Is it time to reconsider my plans? '''
-		probability = 0.8  # for now 20%
+		probability = 0.99  # for now 1%
 		reconsider = random() > probability
 		return reconsider
 

@@ -52,7 +52,7 @@ class Leader( Role ):
 			query = "assert( quest_no( 'party_time', '%s', leader, 0 ) )" % self.myAgent.avatar_name
 			self.myAgent.kb.ask( query )
 			time.sleep( 0.5 )
-			query = "assert( quest_sign( '%s', leader, 10001 ) )" % self.myAgent.avatar_name 
+			query = "assert( quest_sign( '%s', leader, 10002 ) )" % self.myAgent.avatar_name 
 			self.myAgent.kb.ask( query )
 			time.sleep( 0.5 )
 
@@ -65,7 +65,7 @@ class Leader( Role ):
 			query = "assert( quest_no( 'party_time', '%s', store_party_stats, 0 ) )" % self.myAgent.avatar_name
 			self.myAgent.kb.ask( query )
 			time.sleep( 0.5 )
-			query = "assert( quest_sign( '%s', store_party_stats, 10002 ) )" % self.myAgent.avatar_name 
+			query = "assert( quest_sign( '%s', store_party_stats, 10003 ) )" % self.myAgent.avatar_name 
 			self.myAgent.kb.ask( query )
 			time.sleep( 0.5 )
 
@@ -74,6 +74,7 @@ class Leader( Role ):
 			''' if the quest of inviting people isn't waiting, put it into waiting again '''
 			query = "waiting_quest( 'party_time', '%s', invite_player )" % self.myAgent.avatar_name
 			result = self.myAgent.kb.ask( query )
+			time.sleep( 0.5 )
 			if not result:
 				query = query = "retractall( waiting_quest( 'party_time', '%s', invite_player ) )" % self.myAgent.avatar_name
 				self.myAgent.kb.ask( query )
@@ -94,12 +95,14 @@ class Leader( Role ):
 				query = "assert( quest_sign( '%s', invite_player, 10001 ) )" % self.myAgent.avatar_name 
 				self.myAgent.kb.ask( query )
 				time.sleep( 0.5 )
+			else:
+				self.myAgent.say( "I am going to invite more people, don't know when, though ..." )
 
 	def __init__( self ):
 		lb = self.LeaderBehaviour()
 		ipb = self.InvitePlayers( 30 ) # check every 30 seconds
 		psb = self.PartyStats()
-		self.behaviours = [ ( lb, None ), ( ipb, None ), ( psb, None ) ]
+		self.behaviours = [  ( psb, None ), ( lb, None ), ( ipb, None ) ]
 
 class ExtremistFollower( Role ):
 	class ExtremistFollowerBehaviour( spade.Behaviour.OneShotBehaviour ):
@@ -157,9 +160,10 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 		except:
 			return ()
 
-	def sendMessage( self, receiver, message, performative='inform' ):
+	def sendMessage( self, receiver, message, performative='inform', ontology='tmw' ):
 		msg = spade.ACLMessage.ACLMessage()
 		msg.setPerformative( performative )
+		msg.setOntology( ontology )
 		rec = spade.AID.aid( "%s@127.0.0.1" % receiver, [ "xmpp://%s@127.0.0.1" % receiver ] )
 		msg.addReceiver( rec )
 		msg.setContent( message )
@@ -167,7 +171,7 @@ class ManaWorldPlayer( spade.Agent.BDIAgent, lli.Connection ):
 
 	def say( self, msg ):
 		''' Say something (e.g. print to console for debug purposes) '''
-		print '%s | %s: %s' % ( time.strftime( '%H:%M:%S' ), self.name.split( '@' )[ 0 ], str( msg ) )
+		print '>>> %s | %s: %s' % ( time.strftime( '%j %H:%M:%S' ), self.name.split( '@' )[ 0 ], str( msg ) )
 
 	def __init__( self, SERVER, PORT, USERNAME, PASSWORD, CHARACTER, *args, **kwargs ):
 		spade.Agent.Agent.__init__( self, *args, **kwargs )
